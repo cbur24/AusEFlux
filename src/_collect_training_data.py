@@ -129,7 +129,7 @@ def extract_ec_gridded_data(suffix,
     # Set negative GPP, ER, and ET measurements as zero
     flux['GPP_SOLO'] = xr.where(flux.GPP_SOLO < 0, 0, flux.GPP_SOLO)
     flux['ET'] = xr.where(flux.ET < 0, 0, flux.ET)
-    flux['ER_SOLO'] = xr.where(flux.ER_SOLO < 0, 0, flux.ET)
+    flux['ER_SOLO'] = xr.where(flux.ER_SOLO < 0, 0, flux.ER_SOLO)
     
     # offset time to better match gridded data
     flux['time'] = flux.time + np.timedelta64(14,'D') 
