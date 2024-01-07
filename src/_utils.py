@@ -14,6 +14,7 @@ import logging
 from typing import Any, Iterable, Optional, Union, Tuple
 import odc.geo.xr
 import xarray as xr
+import numpy as np
 import geopandas as gpd
 import rasterio.features
 

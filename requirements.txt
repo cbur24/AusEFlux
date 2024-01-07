@@ -10,6 +10,7 @@ dask[complete]
 dask-ml
 
 # geospatial
+xarray[complete]
 rioxarray
 pandas
 geopandas
