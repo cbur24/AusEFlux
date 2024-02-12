@@ -12,11 +12,6 @@ def VPD(rh, ta):
     vpd = (((100 - rh)/100) * sat_vp)
     return vpd
 
-def extract_ec_vars(flux, var):
-    df = flux[var].to_dataframe().reset_index(
-        level=[1, 2]).drop(['latitude', 'longitude'], axis=1)
-    return df
-
 def extract_rs_vars(path, flux_time, time_start, time_end, idx, add_comparisons=False):
     if add_comparisons:
         if 'quantiles' in path:
@@ -50,14 +45,14 @@ def extract_rs_vars(path, flux_time, time_start, time_end, idx, add_comparisons=
     
     return ds
 
-def extract_ec_gridded_data(version='2023_v1',
-                            level='L6',
-                            type='default',
-                            add_comparisons=False,
-                            save_ec_data=None,
-                            return_coords=True,
-                            export_path=None,
-                            verbose=False
+def extract_ozflux(version='2023_v2',
+                    level='L6',
+                    type='default',
+                    rs_data_folder=None,
+                    save_ec_data=None,
+                    return_coords=True,
+                    export_path=None,
+                    verbose=True
                            ):
     """
     Extract OzFlux data from THREDDS, and environmental
@@ -66,18 +61,23 @@ def extract_ec_gridded_data(version='2023_v1',
     
     Params:
     ------
+    version: str. version ID of the ozflux data to download e.g '2023_v2'
+    level: str. processing level to download, 'L3 to 'L6'
+    type: str. Either 'default' or 'site_pi'
+    rs_data_folder: path.
+    save_ec_data: path. If a path is specified, netcdf data will be saved
     return_coords : bool. If True returns the x,y coordinates of the EC tower as columns on the
-            pandas dataframe
+            pandas dataframe / csv.
+    export_path: path. If a path is provided, a .csv file is output with the ozflux data.
     verbose : bool. If true progress statements are printed
     
     
     Returns:
     -------
-        Pandas.Dataframe containing coincident observations between
-        EC data and gridded data.
+        Pandas.Dataframe
         
     """
-    #-----Get Eddy covaraince data from the OzFlux THREDDS server--------------------
+    #-----Get Eddy covariance data from the OzFlux THREDDS server--------------------
     
     #get list of all the folders on the THREDDS server
     url = "https://dap.tern.org.au/thredds/catalog/ecosystem_process/ozflux/catalog.html"
@@ -89,38 +89,44 @@ def extract_ec_gridded_data(version='2023_v1',
     #get rid of the couple of unneeded files
     sites_names = sites_names[2:-2]
     
+    if verbose:
+        print('Total number of sites to collect:', len(sites_names))
+    
     #loop through all the sites and open the datasets specified by the version and level etc.
     for i in range(len(sites_names)):
-
-        if verbose==False:
-            print("Extracting OzFlux site: {:02}/{:02}\r".format(i + 1, len(range(0, len(sites_names)))), end="")
+        if verbose:
+            print(sites_names[i][0:-13])
         
         partial_url = url.replace("catalog.html", "")+sites_names[i].replace("catalog.html", "")+version+'/'+level+'/'+type+'/'+'catalog.html'
-    
         soup = BeautifulSoup(requests.get(partial_url).content, "html.parser")
+        
         files = []
         for link in soup.select('a[href*="Monthly.nc"]'):
             files.append(link["href"])
-            
-        full_path = partial_url.replace("catalog.html", "").replace('catalog', 'dodsC')+files[0][files[0].rindex('/')+1:]
-
-        if os.path.exists(export_path+full_path[63:68]+'_training_data.csv'):
-            print('skipping '+ full_path[63:68])
+        
+        try:
+            full_path = partial_url.replace("catalog.html", "").replace('catalog', 'dodsC')+files[0][files[0].rindex('/')+1:]
+        except:
+            print('', sites_names[i][0:-13] + ' does not exist for this combination of versions, level...skipping.')
             continue
         
-        if verbose:
-            print('dataset:', full_path)
+        if os.path.exists(export_path+sites_names[i][0:-13]+'.csv'):
+            print('   skipping '+sites_names[i][0:-13]+' as already exists in save location')
+            continue
         
         flux = xr.open_dataset(full_path)
 
         if save_ec_data:
+            if not os.path.exists(save_ec_data):
+                os.makedirs(save_ec_data)
+            
             del flux.attrs['_NCProperties'] #delete 'reserved' property name
-            flux.to_netcdf(save_ec_data+full_path[63:68]+'_'+version+'_'+level+'.nc')
+            flux.to_netcdf(save_ec_data+sites_names[i][0:-13]+'_'+version+'_'+level+'.nc')
         
-        # Set negative GPP, ER, and ET measurements as zero
-        flux['GPP_SOLO'] = xr.where(flux.GPP_SOLO < 0, 0, flux.GPP_SOLO)
-        flux['ET'] = xr.where(flux.ET < 0, 0, flux.ET)
-        flux['ER_SOLO'] = xr.where(flux.ER_SOLO < 0, 0, flux.ER_SOLO)
+        # # Set negative GPP, ER, and ET measurements as zero
+        # flux['GPP_SOLO'] = xr.where(flux.GPP_SOLO < 0, 0, flux.GPP_SOLO)
+        # flux['ET'] = xr.where(flux.ET < 0, 0, flux.ET)
+        # flux['ER_SOLO'] = xr.where(flux.ER_SOLO < 0, 0, flux.ER_SOLO)
         
         # offset time to better match gridded data
         flux['time'] = flux.time + np.timedelta64(14,'D') 
@@ -131,22 +137,15 @@ def extract_ec_gridded_data(version='2023_v1',
         time_start = str(np.datetime_as_string(flux.time.values[0], unit='D'))
         time_end = str(np.datetime_as_string(flux.time.values[-1], unit='D'))
         
-        if "Longr" in full_path[63:68]: #coorindates on nc file is wrong
+        if "Longr" in full_path[63:68]: #coordinates on nc file are wrong
             lat=-23.5232
             lon=144.3104
-            #idx=dict(latitude=-23.5232,  longitude=144.3104)
-
+        
+        #index for grabbing pixels
         idx=dict(latitude=lat,  longitude=lon)
-    
-        variables = ['GPP_SOLO','ER_SOLO','ET','Ta','Sws','RH','VP','Precip','Fn','Fe','Fh','Fsd','Fld','CO2']
-        nee = extract_ec_vars(flux, 'NEE_SOLO') #extract first variable
-        
-        df_ec=[]
-        for var in variables: #loop through other vars
-            df = extract_ec_vars(flux, var)
-            df_ec.append(df)
-        
-        df_ec = nee.join(df_ec) #join other vars to NEE
+
+        #convert to dataframe
+        df_ec = flux.to_dataframe().reset_index(level=[1, 2]).drop(['latitude', 'longitude'], axis=1)
         df_ec = df_ec.add_suffix('_EC')
      
         # calculate VPD on ec data
@@ -162,81 +161,40 @@ def extract_ec_gridded_data(version='2023_v1',
         #--------Remote sensing data--------------------------------------
         
         # extract the first remote sensing variable
-        data = '/g/data/os22/chad_tmp/climate-carbon-interactions/data/5km/'
-        covariables = [data+i for i in os.listdir(data) if i.endswith('.nc')]
-        covariables.sort()
+        if rs_data_folder:
+            covariables = [rs_data_folder+i for i in os.listdir(rs_data_folder) if i.endswith('.nc')]
+            covariables.sort()
         
-        first_var = covariables[0]
-        if verbose:
-            print('   Extracting '+ first_var.replace(data, ''))
-        first = extract_rs_vars(covariables[0],
-                      flux.time, time_start, time_end, idx)
-        
-        #extract the rest of the RS variables in loop    
-        dffs = []
-        for var in covariables[1:]:
+            first_var = covariables[0]
             if verbose:
-                print('   Extracting '+ var.replace(data, ''))
-                
-            df = extract_rs_vars(var,
-                   flux.time, time_start, time_end, idx)
+                print('   Extracting RS data...')
             
-            dffs.append(df)
-
-        # join all the datasets
-        df_rs = first.join(dffs)
-                          
-        df_rs = df_rs.add_suffix('_RS') 
-        df = df_ec.join(df_rs)
-        
-        if return_coords:
-            df['x_coord'] = lon
-            df['y_coord'] = lat
-        
-        time = df.reset_index()['time'].dt.normalize()
-        df = df.set_index(time)
-        
-        if add_comparisons:
-            others = {
-                'MODIS_GPP':'/g/data/os22/chad_tmp/NEE_modelling/data/1km/MODIS_GPP_1km_monthly_2002_2021.nc',
-                'GOSIF_GPP':'/g/data/os22/chad_tmp/NEE_modelling/data/5km/GOSIF_GPP_5km_monthly_2002_2021.nc',
-                'DIFFUSE_GPP':'/g/data/os22/chad_tmp/NEE_modelling/data/1km/DIFFUSE_GPP_1km_monthly_2003_2021.nc',
-                'CABLE_BIOS_NEE':'/g/data/os22/chad_tmp/NEE_modelling/data/CABLE/CABLE-BIOS/CABLE_BIOS_nbp_25km_monthly_2003_2019.nc',
-                'CABLE_BIOS_GPP':'/g/data/os22/chad_tmp/NEE_modelling/data/CABLE/CABLE-BIOS/CABLE_BIOS_gpp_25km_monthly_2003_2019.nc',
-                'CABLE_BIOS_ER':'/g/data/os22/chad_tmp/NEE_modelling/data/CABLE/CABLE-BIOS/CABLE_BIOS_er_25km_monthly_2003_2019.nc',
-                'CABLE_POP_NEE':'/g/data/os22/chad_tmp/NEE_modelling/data/CABLE/CABLE-POP_v10/CABLE-POP_nbp_100km_monthly_2003_2020.nc',
-                'CABLE_POP_GPP':'/g/data/os22/chad_tmp/NEE_modelling/data/CABLE/CABLE-POP_v10/CABLE-POP_gpp_100km_monthly_2003_2020.nc',
-                'CABLE_POP_ER':'/g/data/os22/chad_tmp/NEE_modelling/data/CABLE/CABLE-POP_v10/CABLE-POP_er_100km_monthly_2003_2020.nc',
-                'This_Study_NEE':'/g/data/os22/chad_tmp/NEE_modelling/results/predictions/NEE_2003_2022_1km_quantiles_20230320.nc',
-                'This_Study_GPP':'/g/data/os22/chad_tmp/NEE_modelling/results/predictions/GPP_2003_2022_1km_quantiles_20230320.nc',
-                'This_Study_ER':'/g/data/os22/chad_tmp/NEE_modelling/results/predictions/ER_2003_2022_1km_quantiles_20230320.nc',
-                'FLUXCOM_RS_GPP':'/g/data/os22/chad_tmp/NEE_modelling/data/FLUXCOM/GPP_rs.nc',
-                'FLUXCOM_RS_NEE':'/g/data/os22/chad_tmp/NEE_modelling/data/FLUXCOM/NEE_rs.nc',
-                'FLUXCOM_RS_ER':'/g/data/os22/chad_tmp/NEE_modelling/data/FLUXCOM/TER_rs.nc',
-                'FLUXCOM_MET_GPP':'/g/data/os22/chad_tmp/NEE_modelling/data/FLUXCOM/GPP_rs_meteo_era5.nc',
-                'FLUXCOM_MET_NEE':'/g/data/os22/chad_tmp/NEE_modelling/data/FLUXCOM/NEE_rs_meteo_era5.nc',
-                'FLUXCOM_MET_ER':'/g/data/os22/chad_tmp/NEE_modelling/data/FLUXCOM/TER_rs_meteo_era5.nc'
-            }
-            other_dffs = []
-            for prod in others.items():
+            first = extract_rs_vars(covariables[0],
+                          flux.time, time_start, time_end, idx)
+            
+            #extract the rest of the RS variables in loop    
+            dffs = []
+            for var in covariables[1:]:   
+                df = extract_rs_vars(var,
+                       flux.time, time_start, time_end, idx)
                 
-                other = extract_rs_vars(prod[1],
-                       time, time_start, time_end, idx, add_comparisons=add_comparisons)
-                # print(other)
-                other = other.rename({other.columns[0] : prod[0]}, axis=1)
-                
-                if prod[0]=='MODIS_GPP':
-                    other['MODIS_GPP'] = other['MODIS_GPP']*1000
-                
-                if prod[0]=='DIFFUSE_GPP':
-                    other['DIFFUSE_GPP'] = other['DIFFUSE_GPP']*30
-                
-                other_dffs.append(other)
+                dffs.append(df)
     
-            df = df.join(other_dffs)
-            df = df.drop(['NEE_mad', 'GPP_mad', 'TER_mad'], axis=1)
-        
+            # join all the datasets EC and RS
+            df_rs = first.join(dffs)
+            df_rs = df_rs.add_suffix('_RS') 
+            df = df_ec.join(df_rs)
+            
+            if return_coords:
+                df['x_coord'] = lon
+                df['y_coord'] = lat
+            
+            time = df.reset_index()['time'].dt.normalize()
+            df = df.set_index(time)
+         
         if export_path:
-            df.to_csv(export_path+full_path[63:68]+'_training_data.csv')
+            if not os.path.exists(export_path):
+                os.makedirs(export_path)
+            df.to_csv(export_path+sites_names[i][0:-13]+'.csv')
 
     
