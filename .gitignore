@@ -3,6 +3,9 @@
 *.tif
 *.xml
 *.nc
+*.gif
+*.png
+*.csv
 *.joblib
 data/
 env/

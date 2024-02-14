@@ -6,6 +6,10 @@ import dask.array as da
 from odc.geo.xr import assign_crs
 from dask_ml.wrappers import ParallelPostFit
 
+import sys
+sys.path.append('/g/data/os22/chad_tmp/AusEFlux/src/')
+from _utils import round_coords
+
 
 def allNaN_arg(da, dim, stat, idx=True):
     """
@@ -49,16 +53,41 @@ def allNaN_arg(da, dim, stat, idx=True):
         return y
     
 
-def collect_prediction_data(time_start,
-                            time_end,
-                            chunks=dict(latitude=1000, longitude=1000, time=1),
+def collect_prediction_data(data_path=None,
+                            time_range=None,
+                            chunks=dict(time=1),
                             export=False,
                             verbose=True
                            ):
-  
+
+    """
+    Gather all gridded prediction/feature data into a
+    single xrray.Dataset. Assumes all datasets in the 
+    'data_path' folder are spatio-temporally harmonised.
+
+    Parameters
+    ----------
+    data_path : str.
+        Path to a folder where netcdf files are stored.
+        All datasets in this folder are joined into an 
+        xr.Dataarray.
+    time_range : tuple.
+        We can clip the time-range of the data using the 
+        this parameters, useful if some of the datasets
+        in 'data_path' have different length time dimensions.
+        e.g ('1982', '2022')
+    export: str
+        If specifying a path, the Dataset will be exported as
+        a netcdf.
+
+    Returns
+    -------
+        xarray.DataAset
+        
+    """
+    
     # Grab a list of all datasets in the folder
-    base='/g/data/os22/chad_tmp/climate-carbon-interactions/data/5km/' 
-    covariables = [base+i for i in os.listdir(base) if i.endswith('.nc')]
+    covariables = [data_path+i for i in os.listdir(data_path) if i.endswith('.nc')]
     covariables.sort()
 
     #loop through datasets and append
@@ -68,7 +97,8 @@ def collect_prediction_data(time_start,
             print('Extracting', var.replace(base, ''))
 
         ds = assign_crs(xr.open_dataset(var, chunks=chunks), crs='EPSG:4326')
-        ds = ds.sel(time=slice(time_start, time_end))
+        if time_range:
+            ds = ds.sel(time=slice(time_range[0], time_range[1]))
         ds = round_coords(ds)
         dss.append(ds)
     
@@ -86,7 +116,7 @@ def collect_prediction_data(time_start,
     if export:
         if verbose:
             print('   Exporting netcdf')
-        data.compute().to_netcdf(export+'/prediction_data_'+time_start+'_'+time_end+'.nc')
+        data.compute().to_netcdf(f'{export}/prediction_data_{time_start}_{time_end}.nc')
     
     return data
 
@@ -151,7 +181,7 @@ def predict_xr(
         chunk_size = int(input_xr.chunks["x"][0]) * int(input_xr.chunks["y"][0])
 
     def _predict_func(model, input_xr, persist, proba, clean, return_input):
-        x, y, crs = input_xr.x, input_xr.y, input_xr.geobox.crs
+        x, y, crs = input_xr.x, input_xr.y, input_xr.spatial_ref.data.item()
 
         input_data = []
 
@@ -245,7 +275,7 @@ def predict_xr(
             # merge with predictions
             output_xr = xr.merge([output_xr, output_features], compat="override")
 
-        return assign_crs(output_xr, str(crs))
+        return assign_crs(output_xr, crs='EPSG:'+str(crs))
 
     if dask == True:
         # convert model to dask predict

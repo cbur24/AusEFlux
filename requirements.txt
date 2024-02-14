@@ -26,3 +26,7 @@ shap
 contextily
 seaborn
 folium
+odc-ui
+
+# analysis
+scikit-image

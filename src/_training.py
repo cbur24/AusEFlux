@@ -123,10 +123,10 @@ def extract_ozflux(version='2023_v2',
             del flux.attrs['_NCProperties'] #delete 'reserved' property name
             flux.to_netcdf(save_ec_data+sites_names[i][0:-13]+'_'+version+'_'+level+'.nc')
         
-        # # Set negative GPP, ER, and ET measurements as zero
-        # flux['GPP_SOLO'] = xr.where(flux.GPP_SOLO < 0, 0, flux.GPP_SOLO)
-        # flux['ET'] = xr.where(flux.ET < 0, 0, flux.ET)
-        # flux['ER_SOLO'] = xr.where(flux.ER_SOLO < 0, 0, flux.ER_SOLO)
+        # Set negative GPP, ER, and ET measurements as zero
+        flux['GPP_SOLO'] = xr.where(flux.GPP_SOLO < 0, 0, flux.GPP_SOLO)
+        flux['ET'] = xr.where(flux.ET < 0, 0, flux.ET)
+        flux['ER_SOLO'] = xr.where(flux.ER_SOLO < 0, 0, flux.ER_SOLO)
         
         # offset time to better match gridded data
         flux['time'] = flux.time + np.timedelta64(14,'D') 
