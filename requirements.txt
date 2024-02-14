@@ -25,3 +25,4 @@ shap
 # plotting
 contextily
 seaborn
+folium
