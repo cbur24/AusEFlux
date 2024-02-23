@@ -9,6 +9,7 @@ ipywidgets
 dask[complete]
 dask-ml
 graphviz
+flox
 
 # geospatial
 xarray[complete]
