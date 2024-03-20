@@ -13,31 +13,12 @@ def VPD(rh, ta):
     return vpd
 
 def extract_rs_vars(path, flux_time, time_start, time_end, idx, add_comparisons=False):
-    if add_comparisons:
-        if 'quantiles' in path:
-            ds = xr.open_dataset(path).sel(quantile=0.5).drop('quantile')
-        else:
-            ds = xr.open_dataset(path)
-        
-        if 'FLUXCOM' in path:
-            ds = ds*30
-            
-        if 'meteo_era5' in path:
-            ds = ds.rename({'lat':'latitude', 'lon':'longitude'})
-            ds=ds[path[-20:-17]]
-
-        try:
-            ds = ds.rename({'y':'latitude', 'x':'longitude'})
-        
-        except:
-            pass
-    else:
-        ds = assign_crs(xr.open_dataset(path), crs='EPSG:4326')
-        #ds = ds.to_array()
-
+    
+    ds = assign_crs(xr.open_dataset(path), crs='EPSG:4326')
+    #ds = ds.to_array()
     ds = ds.sel(idx, method='nearest').sel(time=slice(time_start, time_end)) # grab pixel
     ds = ds.reindex(time=flux_time, method='nearest', tolerance='1D').compute() 
-
+    
     try:
         ds = ds.to_dataframe().drop(['latitude', 'longitude', 'spatial_ref'], axis=1)
     except:
@@ -140,6 +121,9 @@ def extract_ozflux(version='2023_v2',
         if "Longr" in full_path[63:68]: #coordinates on nc file are wrong
             lat=-23.5232
             lon=144.3104
+
+        if "Tumba" in full_path[63:68]: #burnt down in 2019
+            flux = flux.sel(time=slice('2000','2019'))
         
         #index for grabbing pixels
         idx=dict(latitude=lat,  longitude=lon)

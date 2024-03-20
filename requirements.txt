@@ -28,6 +28,7 @@ contextily
 seaborn
 folium
 odc-ui
+mapclassify
 
 # analysis
 scikit-image
