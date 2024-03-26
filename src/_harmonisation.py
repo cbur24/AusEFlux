@@ -11,17 +11,19 @@ import sys
 sys.path.append('/g/data/os22/chad_tmp/AusEFlux/src/')
 from _utils import round_coords
 
-def spatiotemporal_harmonisation(year,
+def spatiotemporal_harmonisation(year_start,
+                                 year_end,
                                  base_path='/g/data/ub8/au/',
                                  results_path='/g/data/os22/chad_tmp/AusEFlux/data/interim/',
                                  verbose=False
                                 ):
     """
-    Run everything
+    Top level fuction to run all the functions associated with
+    harmonising the input datasets.
     """
 
     #list of years to run
-    years = [str(i) for i in range(year,year+1)]
+    years = [str(i) for i in range(year_start, year_end+1)]
 
     # Grab a common grid to reproject too and a create a land mask
     p = '/g/data/os22/chad_tmp/climate-carbon-interactions/data/5km/WCF_5km_monthly_1982_2022.nc'
@@ -142,7 +144,7 @@ def _modis_indices(years,
         if not os.path.exists(folder):
             os.makedirs(folder)
     
-        #ds.astype('float32').to_netcdf(f'{results}{var}/{var}_5km_{year}.nc')
+        ds.astype('float32').to_netcdf(f'{results}{var}/{var}_5km_{year}.nc')
 
 
 def _ozwald_indices(years,
@@ -202,7 +204,7 @@ def _ozwald_indices(years,
             if not os.path.exists(folder):
                 os.makedirs(folder)
         
-            #ds.astype('float32').to_netcdf(f'{results}{var}/{k}_5km_{year}.nc')
+            ds.astype('float32').to_netcdf(f'{results}{var}/{k}_5km_{year}.nc')
 
 
 def _modis_LST(years,
@@ -285,7 +287,7 @@ def _modis_LST(years,
             if not os.path.exists(folder):
                 os.makedirs(folder)
         
-            #ds.astype('float32').to_netcdf(f'{results}{var}/{var}_5km_{year}.nc')
+            ds.astype('float32').to_netcdf(f'{results}{var}/{var}_5km_{year}.nc')
 
 
 def _veg_height(years,
@@ -333,8 +335,8 @@ def _veg_height(years,
         dss = dss.where(mask)
         dss = dss.rename(var)
         
-        #export
-        #dss.to_netcdf(f'{results}{var}/{var}_5km_{year}.nc')
+        # export
+        dss.to_netcdf(f'{results}{var}/{var}_5km_{year}.nc')
 
 def _ozwald_climate(years,
                 var,
@@ -374,7 +376,6 @@ def _ozwald_climate(years,
         ds = ds.to_array()
         ds = ds.squeeze().drop_vars('variable')
         ds.attrs['nodata'] = np.nan
-        #ds = ds.chunk(latitude=10000, longitude=10000, time=1) # now rechunk for the reproject
         
         #we need to spatial resample first to reduce RAM/speed up.
         if k=='kTavg':
@@ -396,7 +397,7 @@ def _ozwald_climate(years,
         if not os.path.exists(folder):
             os.makedirs(folder)
         
-        #ds.astype('float32').to_netcdf(f'{results}/{k}/{k}_5km_{year}.nc')
+        ds.astype('float32').to_netcdf(f'{results}/{k}/{k}_5km_{year}.nc')
 
     # -----------Step 2-----------------------------------------------
     for year in years:
@@ -436,7 +437,7 @@ def _ozwald_climate(years,
         if not os.path.exists(folder):
             os.makedirs(folder)
     
-        #ds.astype('float32').to_netcdf(f'{results}{var}/{var}_5km_{year}.nc')
+        ds.astype('float32').to_netcdf(f'{results}{var}/{var}_5km_{year}.nc')
 
 def _SILO_climate(years,
                 var,
@@ -509,7 +510,7 @@ def _SILO_climate(years,
                 if not os.path.exists(folder):
                     os.makedirs(folder)
                 
-                #ds.astype('float32').to_netcdf(f'{results}/{k}/{k}_5km_{year}.nc')
+                ds.astype('float32').to_netcdf(f'{results}/{k}/{k}_5km_{year}.nc')
     
 
 
