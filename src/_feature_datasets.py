@@ -250,7 +250,7 @@ def _c4_grass_fraction(results,
     ds = assign_crs(ds, crs='epsg:4326')
 
    # Grab a common grid to reproject too and a create a land mask
-    p = '/g/data/os22/chad_tmp/climate-carbon-interactions/data/5km/WCF_5km_monthly_1982_2022.nc'
+    p = '/g/data/os22/chad_tmp/AusEFlux/data/WCF_5km_2003_2022.nc'
     gbox = xr.open_dataset(p).odc.geobox
     #create a mask of aus extent
     mask = xr.open_dataset(p)['WCF']

@@ -26,7 +26,7 @@ def spatiotemporal_harmonisation(year_start,
     years = [str(i) for i in range(year_start, year_end+1)]
 
     # Grab a common grid to reproject too and a create a land mask
-    p = '/g/data/os22/chad_tmp/climate-carbon-interactions/data/5km/WCF_5km_monthly_1982_2022.nc'
+    p = '/g/data/os22/chad_tmp/AusEFlux/data/WCF_5km_2003_2022.nc'
     gbox = xr.open_dataset(p).odc.geobox
 
     if verbose:
