@@ -48,7 +48,7 @@ def spatiotemporal_harmonisation(year_start,
 
     #run NDVI
     if verbose:
-        print('Process NDVI, estimated time 5 mins/year')
+        print('Process NDVI, estimated time 1 min/year')
     _ozwald_indices(years, 'NDVI', base_path, results_path, gbox, mask, verbose=verbose)
 
     #run LST
@@ -64,11 +64,11 @@ def spatiotemporal_harmonisation(year_start,
     #run temperature-average from ozwald
     if verbose:
         print('Process Tavg, estimated time 80 mins/year')
-    _ozwald_climate(year, 'Tavg', base_path, results_path, gbox, mask, verbose=verbose)
+    _ozwald_climate(years, 'Tavg', base_path, results_path, gbox, mask, verbose=verbose)
 
     #run SILO climate grids
     if verbose:
-        print('Process Tavg, estimated time 5 seconds/year/variable')
+        print('Process SILO Climate, estimated time 5 seconds/year/variable')
     _SILO_climate(years, None, base_path, results_path, gbox, mask, verbose=verbose)
 
 
@@ -84,8 +84,13 @@ def _modis_indices(years,
 
     """
     Process MODIS surface reflectance bands into NDWI and kNDVI based on MODIS data
-    from /g/data/ub8/au/MODIS/mosaic/MCD43A4.06/. Reproject data to "geobox" and resample
-    to monthly means
+    from /g/data/ub8/au/MODIS/mosaic/MCD43A4.06/. Reproject data to "geobox" and
+    resample to monthly means
+
+    The orginal Gao (1996) paper says to use the 1230_1250nm band (band 5 in MODIS),
+    but other sources suggest band 6. On the basis of experiments, looks like B6
+    is more sensitive.
+    
     """
     for year in years:
     
@@ -99,6 +104,7 @@ def _modis_indices(years,
             modis_sr_inputs = {
                 'SR_B2': 'MODIS/mosaic/MCD43A4.006/MCD43A4.006.b02.500m_0841_0876nm_nbar.'+year+'.nc',
                 'SR_B6': 'MODIS/mosaic/MCD43A4.006/MCD43A4.006.b06.500m_1628_1652nm_nbar.'+year+'.nc',
+                # 'SR_B5': 'MODIS/mosaic/MCD43A4.006/MCD43A4.006.b05.500m_1230_1250nm_nbar.'+year+'.nc',
                  }
         
         if var=='kNDVI':
@@ -356,48 +362,49 @@ def _ozwald_climate(years,
     """
 
     # -----------Step 1-----------------------------------------------
-    clim_inputs = {
-        'Tmin':'OzWALD/daily/meteo/Tmin/OzWALD.Tmin.'+year+'.nc', 
-        'Tmax':'OzWALD/daily/meteo/Tmax/OzWALD.Tmax.'+year+'.nc',
-        'kTavg':'OzWALD/daily/meteo/kTavg/OzWALD.kTavg.'+year+'.nc'
-         }
+    for year in years:
+        clim_inputs = {
+            'Tmin':'OzWALD/daily/meteo/Tmin/OzWALD.Tmin.'+year+'.nc', 
+            'Tmax':'OzWALD/daily/meteo/Tmax/OzWALD.Tmax.'+year+'.nc',
+            'kTavg':'OzWALD/daily/meteo/kTavg/OzWALD.kTavg.'+year+'.nc'
+             }
+        
+        for k,i in clim_inputs.items():
+            
+            if os.path.exists(f'{results}/{k}/{k}_5km_{year}.nc'):
+                continue
+            else:
+                if verbose:
+                    print(' ', k, year)
+            
+            #open and do some prelim processing
+            ds = xr.open_dataset(base+i, chunks=dask_chunks) # open as one chunk per time
+            ds = assign_crs(ds, crs='epsg:4326')
+            ds = ds.to_array()
+            ds = ds.squeeze().drop_vars('variable')
+            ds.attrs['nodata'] = np.nan
+            
+            #we need to spatial resample first to reduce RAM/speed up.
+            if k=='kTavg':
+                #upscaling from 10km to 5km
+                ds = ds.odc.reproject(geobox, resampling='nearest').compute()
+                ds = round_coords(ds)
+            else:
+                # downsacling from 500m to 5km
+                ds = ds.odc.reproject(geobox, resampling='average').compute()
+                ds = round_coords(ds)
     
-    for k,i in clim_inputs.items():
-        
-        if os.path.exists(f'{results}/{k}/{k}_5km_{year}.nc'):
-            continue
-        else:
-            if verbose:
-                print(' ', k, year)
-        
-        #open and do some prelim processing
-        ds = xr.open_dataset(base+i, chunks=dask_chunks) # open as one chunk per time
-        ds = assign_crs(ds, crs='epsg:4326')
-        ds = ds.to_array()
-        ds = ds.squeeze().drop_vars('variable')
-        ds.attrs['nodata'] = np.nan
-        
-        #we need to spatial resample first to reduce RAM/speed up.
-        if k=='kTavg':
-            #upscaling from 10km to 5km
-            ds = ds.odc.reproject(geobox, resampling='nearest').compute()
-            ds = round_coords(ds)
-        else:
-            # downsacling from 500m to 5km
-            ds = ds.odc.reproject(geobox, resampling='average').compute()
-            ds = round_coords(ds)
-
-        #tidy up
-        ds = ds.transpose('time', 'latitude', 'longitude')
-        ds = ds.rename(k)
-        ds = assign_crs(ds, crs='epsg:4326')
-        
-        # #export result
-        folder = results+k
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-        
-        ds.astype('float32').to_netcdf(f'{results}/{k}/{k}_5km_{year}.nc')
+            #tidy up
+            ds = ds.transpose('time', 'latitude', 'longitude')
+            ds = ds.rename(k)
+            ds = assign_crs(ds, crs='epsg:4326')
+            
+            # #export result
+            folder = results+k
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+            
+            ds.astype('float32').to_netcdf(f'{results}/{k}/{k}_5km_{year}.nc')
 
     # -----------Step 2-----------------------------------------------
     for year in years:
@@ -445,7 +452,7 @@ def _SILO_climate(years,
                 results,
                 geobox,
                 mask,
-                dask_chunks=dict(latitude=250, longitude=250, time=-1),
+                dask_chunks=dict(lat=250, lon=250, time=-1),
                 verbose=False
                    ):
     
@@ -470,21 +477,24 @@ def _SILO_climate(years,
                         print(' ', k, year)
                 
                 #open and do some prelim processing
-                ds = xr.open_dataset(base+i).drop('crs').chunk(chunks)
+                ds = xr.open_dataset(base+i).drop('crs').chunk(dask_chunks)
                 ds = assign_crs(ds, crs='epsg:4326')
                 ds = ds.to_array()
                 ds = ds.squeeze().drop_vars('variable')
                 ds.attrs['nodata'] = np.nan
         
                 # resample time and space
-                ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).mean()
+                if k=='rain':
+                    ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).sum()
+                else:
+                    ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).mean()
                 
                 if k in ['SRAD', 'VPD']:
                     method='nearest'
                 if k=='rain':
                     method='bilinear'
                 
-                ds = ds.odc.reproject(gbox, resampling=method).compute()
+                ds = ds.odc.reproject(geobox, resampling=method).compute()
 
                 if k=='VPD':
                     #calculate VPD

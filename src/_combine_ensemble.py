@@ -17,7 +17,7 @@ def combine_ensemble(base,
                      year_start,
                      year_end,
                      attrs,
-                     quantiles=[0.05,0.5,0.95],
+                     quantiles=[0.25,0.5,0.75],
                      dask_chunks=dict(x=1000, y=1000, time=1),
                      verbose=True
 ):
@@ -59,9 +59,9 @@ def combine_ensemble(base,
         print('Exporting netcdf files')
         
     ds = ds.rename(attrs['long_name'])
-    ds = ds.to_dataset(dim='quantile').rename({0.05:model_var+'_5th_percentile',
+    ds = ds.to_dataset(dim='quantile').rename({0.25:model_var+'_25th_percentile',
                                                0.5:model_var+'_median',
-                                               0.95:model_var+'_95th_percentile',
+                                               0.75:model_var+'_75th_percentile',
                                                'x':'longitude', 'y':'latitude'})
     ds = assign_crs(ds, crs='EPSG:4326')
     ds.attrs = attrs

@@ -98,7 +98,7 @@ def collect_prediction_data(data_path=None,
 
         ds = assign_crs(xr.open_dataset(var, chunks=chunks), crs='EPSG:4326')
         if time_range:
-            ds = ds.sel(time=slice(time_range[0], time_range[1]))
+            ds = ds.sel(time=slice(str(time_range[0]), time_range[1]))
         ds = round_coords(ds)
         dss.append(ds)
     

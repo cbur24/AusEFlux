@@ -5,6 +5,10 @@ import rioxarray as rxr
 import numpy as np
 from odc.geo.xr import assign_crs
 
+import sys
+sys.path.append('/g/data/os22/chad_tmp/AusEFlux/src/')
+from _utils import round_coords
+
 import warnings
 warnings.simplefilter(action='ignore')
 
@@ -32,13 +36,13 @@ def create_feature_datasets(base,
     
     for f in folders:
         
-        if os.path.exists(results+f+'_5km.nc'):
-            if verbose:
-                print(' ',f+' exists, skipping')
-            continue
-        else:
-            if verbose:
-                print(' ',f)
+        # if os.path.exists(results_path+f+'_5km.nc'):
+        #     if verbose:
+        #         print(' ',f+' exists, skipping')
+        #     continue
+        # else:
+        #     if verbose:
+        print(' ',f)
         
         files = [f'{base}{f}/{i}' for i in os.listdir(base+f) if i.endswith(".nc")]
         files.sort()
@@ -72,7 +76,7 @@ def create_feature_datasets(base,
         
         ds = ds.drop('month').compute()
     
-        ds.to_netcdf(results+f+'_5km.nc')
+        ds.to_netcdf(results_path+f+'_5km.nc')
 
     #---step 2 Create new features--------------------
     #veg fraction
@@ -82,11 +86,11 @@ def create_feature_datasets(base,
     
     if verbose:
         print('Cumulative rainfall')
-    _cumulative_rainfall(results+'rain_5km.nc', results=results_path)
+    _cumulative_rainfall(results_path+'rain_5km.nc', results=results_path)
     
     if verbose:
         print('Fraction anomalies')
-    _fractional_anomalies(results=results_path)
+    _fractional_anomalies(results=results_path, verbose=verbose)
 
     if verbose:
         print('LST minus Tair')
@@ -222,23 +226,24 @@ def _cumulative_rainfall(rain_path,
     rain_cml_12.compute().to_netcdf(results+'rain_cml12_5km.nc')
 
 def _fractional_anomalies(results,
-                          vars=['NDWI', 'rain', 'rain_cml3','rain_cml6',
+                          vars=['NDWI', 'kNDVI', 'rain', 'rain_cml3','rain_cml6',
                                'rain_cml12', 'SRAD','Tavg', 'VPD'],
+                          verbose=True
 ):
     
     for v in vars:
         
-        if os.path.exists(results+v+'_anom_5km.nc'):
-            if verbose:
-                print('',v+' exists, skipping')
-            continue
-        else:
-            if verbose:
-                print(' ', v)
-            ds = assign_crs(xr.open_dataset(results+v+'_5km.nc'), crs='EPSG:4326')
-            mean = ds.groupby("time.month").mean("time")
-            frac = ds.groupby("time.month") / mean
-            frac.drop('month').rename({v:v+'_anom'}).to_netcdf(results+v+'_anom_5km.nc')
+        # if os.path.exists(results+v+'_anom_5km.nc'):
+        #     if verbose:
+        #         print('',v+' exists, skipping')
+        #     continue
+        # else:
+        if verbose:
+            print(' ', v)
+        ds = assign_crs(xr.open_dataset(results+v+'_5km.nc'), crs='EPSG:4326')
+        mean = ds.groupby("time.month").mean("time")
+        frac = ds.groupby("time.month") / mean
+        frac.drop('month').rename({v:v+'_anom'}).to_netcdf(results+v+'_anom_5km.nc')
 
 
 def _c4_grass_fraction(results,

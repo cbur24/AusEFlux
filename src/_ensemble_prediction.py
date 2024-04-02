@@ -17,7 +17,7 @@ def predict_ensemble(base,
                      model_var,
                      results_path,
                      models_folder,
-                     features,
+                     features_list,
                      year_start,
                      year_end,
                      dask_chunks=dict(time=1),
@@ -34,7 +34,7 @@ def predict_ensemble(base,
     
     ## open data
     data = collect_prediction_data(data_path=f'{base}/data/5km/',
-                                 time_range=(year_start,year_end+1),
+                                 time_range=(f'{year_start}',f'{year_end}'),
                                  verbose=False,
                                  export=False,
                                  chunks=dict(time=1)
@@ -50,12 +50,12 @@ def predict_ensemble(base,
     train_vars = list(pd.read_csv(features_list))[0:-1]
     train_vars.remove('site')
     train_vars=[i[:-3] for i in train_vars]
-    data = data[train_vars]
     
-    if train_vars == list(data.data_vars):
+    try:
+        data = data[train_vars]
         if verbose:
             print('Variables match, n:', len(data.data_vars))
-    else:
+    except:
         raise ValueError("Variables don't match")
 
     # Predict
