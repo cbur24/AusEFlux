@@ -51,9 +51,8 @@ def create_feature_datasets(base,
         ds = xr.open_mfdataset(files)
         ds = ds.chunk(dask_chunks)
                       
-        # Gapfill NDWI differently (has real gaps)
-        if f=='NDWI':
-            # ds = ds.rename({'WI':'NDWI'})
+        # Gapfill NDWI & kNDVI differently (has real gaps)
+        if f in ['NDWI', 'kNDVI']:
             # seperate into climatologies and anomalies
             ds_monthly = ds.groupby('time.month').mean()
             ds_anom = ds.groupby('time.month') - ds_monthly  
@@ -89,7 +88,7 @@ def create_feature_datasets(base,
     _cumulative_rainfall(results_path+'rain_5km.nc', results=results_path)
     
     if verbose:
-        print('Fraction anomalies')
+        print('Fractional anomalies')
     _fractional_anomalies(results=results_path, verbose=verbose)
 
     if verbose:

@@ -71,7 +71,6 @@ def spatiotemporal_harmonisation(year_start,
         print('Process SILO Climate, estimated time 5 seconds/year/variable')
     _SILO_climate(years, None, base_path, results_path, gbox, mask, verbose=verbose)
 
-
 def _modis_indices(years,
                 var,
                 base,
@@ -103,8 +102,8 @@ def _modis_indices(years,
         if var=='NDWI':
             modis_sr_inputs = {
                 'SR_B2': 'MODIS/mosaic/MCD43A4.006/MCD43A4.006.b02.500m_0841_0876nm_nbar.'+year+'.nc',
-                'SR_B6': 'MODIS/mosaic/MCD43A4.006/MCD43A4.006.b06.500m_1628_1652nm_nbar.'+year+'.nc',
-                # 'SR_B5': 'MODIS/mosaic/MCD43A4.006/MCD43A4.006.b05.500m_1230_1250nm_nbar.'+year+'.nc',
+                # 'SR_B6': 'MODIS/mosaic/MCD43A4.006/MCD43A4.006.b06.500m_1628_1652nm_nbar.'+year+'.nc',
+                'SR_B5': 'MODIS/mosaic/MCD43A4.006/MCD43A4.006.b05.500m_1230_1250nm_nbar.'+year+'.nc',
                  }
         
         if var=='kNDVI':
@@ -126,7 +125,7 @@ def _modis_indices(years,
             d[k] = ds #add to dict
         
         if var=='NDWI':
-            ds = (d['SR_B2'] - d['SR_B6']) / (d['SR_B2'] + d['SR_B6'])
+            ds = (d['SR_B2'] - d['SR_B5']) / (d['SR_B2'] + d['SR_B5'])
 
         if var=='kNDVI':
             ds = np.tanh(((d['SR_B2'] - d['SR_B1']) / (d['SR_B2'] + d['SR_B1'])) ** 2)
@@ -212,7 +211,6 @@ def _ozwald_indices(years,
         
             ds.astype('float32').to_netcdf(f'{results}{var}/{k}_5km_{year}.nc')
 
-
 def _modis_LST(years,
                 var,
                 base,
@@ -294,7 +292,6 @@ def _modis_LST(years,
                 os.makedirs(folder)
         
             ds.astype('float32').to_netcdf(f'{results}{var}/{var}_5km_{year}.nc')
-
 
 def _veg_height(years,
                 var,
