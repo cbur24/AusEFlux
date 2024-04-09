@@ -105,7 +105,10 @@ def predict_ensemble(base,
         
         #mask urban areas
         ds = ds.where(urban!=1).astype('float32')
-    
+        
+        if not os.path.exists(results_path):
+            os.makedirs(results_path)
+        
         #save results
         ds.to_netcdf(f'{results_path}{name}.nc')
 

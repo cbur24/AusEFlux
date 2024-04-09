@@ -1,8 +1,10 @@
-# COPIED THIS FROM: https://github.com/opendatacube/datacube-core/blob/develop/datacube/utils/dask.py
+# Some of this is COPIED FROM: https://github.com/opendatacube/datacube-core/blob/develop/datacube/utils/dask.py
 
-""" Dask Distributed Tools
 
-"""
+
+
+
+
 import os
 from random import randint
 import toolz  # type: ignore[import]
@@ -160,6 +162,42 @@ def add_geobox(ds, crs=None):
         )
 
     return ds
+
+
+def create_project_directories(root_dir):
+    data_dir = ['5km', 'interim', 'ozflux_netcdf', 'training_data']
+    results_dir = ['AusEFlux', 'cross_val', 'figs', 'models', 'predictions']
+    main_dir = [data_dir, results_dir]
+    main_dir_names = ['data', 'results']
+    
+    #create main directories
+    for i in range(0, len(main_dir)):
+        for j in range(0,len(main_dir[i])):
+            dirName = f'{root_dir}/{main_dir_names[i]}/{main_dir[i][j]}'
+            if os.path.exists(dirName):
+                print(f'Directory {dirName} already exists')   
+                 
+            else:
+                os.makedirs(dirName)
+                print(f'Directory {dirName} created')
+    
+    #add some further subdirectories in results/
+    subs=[
+        f'{root_dir}/results/predictions/ensemble/historical/',
+        f'{root_dir}/results/models/ensemble/',
+        f'{root_dir}/results/AusEFlux/',
+        f'{root_dir}/results/cross_val/ensemble/'
+    ]
+    
+    for var in ['GPP','ER','NEE', 'ET']:
+        for s in subs:
+            if os.path.exists(s+var):
+                print(f'Directory {s+var} already exists')   
+                 
+            else:
+                os.makedirs(s+var)
+                print(f'Directory {s+var} created')
+
 
 def xr_rasterize(
     gdf,
