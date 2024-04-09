@@ -14,7 +14,7 @@ Data Sources:
     * SILO: VPD, rain, & SRAD
         * /g/data/ub8/au/SILO/radiation/<'year'>.radiation.nc
         * /g/data/ub8/au/SILO/vp/<'year'>.vp.nc
-        * /g/data/ub8/au/SILO/rain/<'year'>.vp.nc
+        * /g/data/ub8/au/SILO/rain/<'year'>.rain.nc
 * MODIS:
     * kNDVI and NDWI derived from: /g/data/ub8/au/MODIS/mosaic/MCD43A4.006/
     * LST: /g/data/ub8/au/MODIS/mosaic/MYD11A1.006/
