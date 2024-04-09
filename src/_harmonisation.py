@@ -87,8 +87,7 @@ def _modis_indices(years,
     resample to monthly means
 
     The orginal Gao (1996) paper says to use the 1230_1250nm band (band 5 in MODIS),
-    but other sources suggest band 6. On the basis of experiments, looks like B6
-    is more sensitive.
+    but other sources suggest band 6. Sticking with Gao for now.
     
     """
     for year in years:

@@ -102,7 +102,7 @@ def extract_ozflux(version='2023_v2',
                 os.makedirs(save_ec_data)
             
             del flux.attrs['_NCProperties'] #delete 'reserved' property name
-            flux.to_netcdf(save_ec_data+sites_names[i][0:-13]+'_'+version+'_'+level+'.nc')
+            flux.to_netcdf(f'{save_ec_data}{sites_names[i][0:-13]}_{version}_{level}.nc')
         
         # Set negative GPP, ER, and ET measurements as zero
         flux['GPP_SOLO'] = xr.where(flux.GPP_SOLO < 0, 0, flux.GPP_SOLO)
@@ -179,6 +179,6 @@ def extract_ozflux(version='2023_v2',
         if export_path:
             if not os.path.exists(export_path):
                 os.makedirs(export_path)
-            df.to_csv(export_path+sites_names[i][0:-13]+'.csv')
+            df.to_csv(f'{export_path}{sites_names[i][0:-13]}.csv')
 
     
