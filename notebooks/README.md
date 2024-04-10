@@ -9,8 +9,8 @@ Data Sources:
 * Climate data:
     * Ozwald temperature
         * /g/data/ub8/au/OzWALD/daily/meteo/Tmin/OzWALD.Tmin.<'year'>.nc
-        * /g/data/ub8/au/OzWALD/daily/meteo/Tmax/OzWALD.Tmin.<'year'>.nc
-        * /g/data/ub8/au/OzWALD/daily/meteo/kTavg/OzWALD.Tmin.<'year'>.nc
+        * /g/data/ub8/au/OzWALD/daily/meteo/Tmax/OzWALD.Tmax.<'year'>.nc
+        * /g/data/ub8/au/OzWALD/daily/meteo/kTavg/OzWALD.kTavg.<'year'>.nc
     * SILO: VPD, rain, & SRAD
         * /g/data/ub8/au/SILO/radiation/<'year'>.radiation.nc
         * /g/data/ub8/au/SILO/vp/<'year'>.vp.nc
