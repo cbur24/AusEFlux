@@ -147,7 +147,7 @@ def ensemble_models(
                 X_tr, X_tt = x_n.iloc[train_index, :], x_n.iloc[test_index, :]
                 y_tr, y_tt = y_n.iloc[train_index], y_n.iloc[test_index]
                 
-                if os.path.exists(f'{base}results/cross_val/{model_var}_ensemble/CV_{j}_{model_var}{m_name}{m}.csv'):
+                if os.path.exists(f'{base}results/cross_val/ensemble/{model_var}/CV_{j}_{model_var}{m_name}{m}.csv'):
                     j+=1
                     continue
         
@@ -184,7 +184,7 @@ def ensemble_models(
                     pred = best_model.predict(X_tt)
                 
                 dff = pd.DataFrame({'Test':y_tt.values.squeeze(), 'Pred':pred}).reset_index(drop=True)
-                dff.to_csv(f'{base}results/cross_val/{model_var}_ensemble/CV_{j}_{model_var}{m_name}{m}.csv')
+                dff.to_csv(f'{base}results/cross_val/ensemble/{model_var}/CV_{j}_{model_var}{m_name}{m}.csv')
         
                 j+=1
             #-----End of Nested CV ---------------------------------------------------
@@ -246,10 +246,10 @@ def validation_plots(
     r2_list=[]
     ac_list=[]
     
-    #get the list of cvs corresponding with a given CV split
-    csvs = [i for i in os.listdir(f'{base}results/cross_val/{model_var}_ensemble/') if i.endswith('.csv')]
+    #get the list of cvs corresponding with a given CV split 
+    csvs = [i for i in os.listdir(f'{base}results/cross_val/ensemble/{model_var}/') if i.endswith('.csv')]
     for i in csvs:
-        df = pd.read_csv(f'{base}results/cross_val/{model_var}_ensemble/{i}', usecols=['Test', 'Pred'])
+        df = pd.read_csv(f'{base}results/cross_val/ensemble/{model_var}/{i}', usecols=['Test', 'Pred'])
         obs,pred = df['Test'].values, df['Pred'].values
         slope, intercept, r_value, p_value, std_err = stats.linregress(obs,pred)
         r2_list.append(r_value**2)
@@ -292,7 +292,7 @@ def validation_plots(
     ax.tick_params(axis='y', labelsize=font)
     
     plt.tight_layout()
-    fig.savefig(f'{base}results/cross_val/{model_var}_ensemble/cross_val_{model_var}_ensemble.png',
+    fig.savefig(f'{base}results/cross_val/ensemble/{model_var}/cross_val_{model_var}_ensemble.png',
                 bbox_inches='tight', dpi=300)
     plt.show()
     
@@ -347,7 +347,7 @@ def ensemble_feature_importance(
     ax.set_xlabel('Ensemble avg. of mean abs. SHAP values: '+model_var, fontsize=22)
     ax.set_ylabel('')
     plt.tight_layout()
-    fig.savefig(f'{base}results/cross_val/{model_var}_ensemble/feature_importance_{model_var}_ensemble.png',
+    fig.savefig(f'{base}results/cross_val/ensemble/{model_var}/feature_importance_{model_var}_ensemble.png',
                 bbox_inches='tight', dpi=300)
     plt.show()
     

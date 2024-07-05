@@ -32,3 +32,4 @@ mapclassify
 
 # analysis
 scikit-image
+xskillscore

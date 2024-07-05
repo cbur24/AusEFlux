@@ -29,6 +29,7 @@ def extract_rs_vars(path, flux_time, time_start, time_end, idx, add_comparisons=
 def extract_ozflux(version='2023_v2',
                     level='L6',
                     type='default',
+                    timestep='Monthly',
                     rs_data_folder=None,
                     save_ec_data=None,
                     return_coords=True,
@@ -78,21 +79,30 @@ def extract_ozflux(version='2023_v2',
         if verbose:
             print(sites_names[i][0:-13])
         
-        partial_url = url.replace("catalog.html", "")+sites_names[i].replace("catalog.html", "")+version+'/'+level+'/'+type+'/'+'catalog.html'
+        partial_url = f'{url.replace("catalog.html", "")}{sites_names[i].replace("catalog.html", "")}{version}/{level}/{type}/catalog.html'
         soup = BeautifulSoup(requests.get(partial_url).content, "html.parser")
         
         files = []
-        for link in soup.select('a[href*="Monthly.nc"]'):
-            files.append(link["href"])
+        if timestep=='Monthly':
+            for link in soup.select('a[href*="Monthly.nc"]'):
+                files.append(link["href"])
         
+        if timestep=='Daily':
+            for link in soup.select('a[href*="Daily.nc"]'):
+                files.append(link["href"])
+        
+        if timestep=='Annual':
+            for link in soup.select('a[href*="Annual.nc"]'):
+                files.append(link["href"])
+       
         try:
             full_path = partial_url.replace("catalog.html", "").replace('catalog', 'dodsC')+files[0][files[0].rindex('/')+1:]
         except:
-            print('', sites_names[i][0:-13] + ' does not exist for this combination of versions, level...skipping.')
+            print(f'  {sites_names[i][0:-13]} does not exist for this combination of versions, level...skipping.')
             continue
         
         if os.path.exists(export_path+sites_names[i][0:-13]+'.csv'):
-            print('   skipping '+sites_names[i][0:-13]+' as already exists in save location')
+            print(f'   skipping {sites_names[i][0:-13]} as already exists in save location')
             continue
         
         flux = xr.open_dataset(full_path)
@@ -141,7 +151,10 @@ def extract_ozflux(version='2023_v2',
             df_ec['VegH_EC'] = float(flux.attrs['canopy_height'][:-1])
         except:
             df_ec['VegH_EC'] = np.nan
-    
+                    
+        if return_coords:
+            df_ec['x_coord'] = lon
+            df_ec['y_coord'] = lat
         #--------Remote sensing data--------------------------------------
         
         # extract the first remote sensing variable
@@ -169,16 +182,15 @@ def extract_ozflux(version='2023_v2',
             df_rs = df_rs.add_suffix('_RS') 
             df = df_ec.join(df_rs)
             
-            if return_coords:
-                df['x_coord'] = lon
-                df['y_coord'] = lat
-            
             time = df.reset_index()['time'].dt.normalize()
             df = df.set_index(time)
          
         if export_path:
             if not os.path.exists(export_path):
                 os.makedirs(export_path)
-            df.to_csv(f'{export_path}{sites_names[i][0:-13]}.csv')
+            try:
+                df.to_csv(f'{export_path}{sites_names[i][0:-13]}.csv')
+            except UnboundLocalError:
+                df_ec.to_csv(f'{export_path}{sites_names[i][0:-13]}.csv')
 
     

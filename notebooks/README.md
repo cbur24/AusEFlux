@@ -1,11 +1,31 @@
-# Jupyter Notebooks for running AusEFlux
+# Running AusEFlux
 
-`annual_update`: Notebooks in this folder describe the methods for creating quasi-operational annual carbon and water fluxes. Use these notebooks if your goal is to generate annual fluxes for the past year.
+The `Annual_update.ipynb` and `Historical.ipynb` notebooks contain an extensively documented workflow for running AusEFlux. The notebooks mostly run the functions stored in the `AusEFlux/src/` folder.
 
-`historical`: Notebooks in this folder decribe the methods for creating historical carbon and water fluxes for Australia through the full length of the MODIS archive (i.e., 2003-present). These notebooks are similar to the `annual_update` folder, but optimised for the task of running 20+ years of predictions and the attendent complications that come with acquiring, harmonising, and predicting a full archive of data.
+The `Historical` notebook contains the workflow for creating historical carbon and water fluxes for Australia through the full length of the MODIS archive (i.e., 2003-2022). It has six steps:
+1. Spatiotemporal harmonisation of input datasets
+2. The creation of feature datasets
+3. Extracting OzFlux eddy covaraince data from the Tern server and combining it with gridded remote sesning and climate datasets
+4. Generating an ensemble of models
+5. Gridded ensemble predictions
+6. Combining ensembles in an ensemble median and uncertainty range
+
+The `Annual` notebook contains the workflow for annual updating of the product. It contains four main steps:
+1. Spatiotemporal harmonisation of input datasets
+2. The creation of feature datasets
+3. Gridded ensemble predictions
+4. Combining ensembles in an ensemble median and uncertainty range
+
+The final output of these notebooks are annual netcdf files for each carbon or water flux, for example: `AusEFlux_GPP_5km_quantiles_2003_v1.2.nc` where the naming convention is "AusEFlux-(flux)-(spatial resolution)-quantiles-(year)-(version).nc".  Results are stored in, for example, 'root_directory/results/AusEFlux/GPP/'
+
+* **analysis folder**: Notebooks in this folder describe various analysis workflows like intercomparisons with other products, plotting etc.
+
+* **annual_update folder**: Notebooks in this folder preserve the Jupyter notebooks used to develop the methods for annual updating of the product. These have been superceeded by the `Annual_update.ipynb` notebook which now runs the entire process.
+
+* **historical folder**: Notebooks in this folder preserve the Jupyter notebooks used to develop the methods for creating historical carbon and water fluxes for Australia through the full length of the MODIS archive (i.e., 2003-present). They are en superceeded by the `Historical.ipynb` notebook which now runs the entire process.
 
 ---
-Data Sources:
+**Data Sources:**
 * Climate data:
     * Ozwald temperature
         * /g/data/ub8/au/OzWALD/daily/meteo/Tmin/OzWALD.Tmin.<'year'>.nc
@@ -20,4 +40,4 @@ Data Sources:
     * LST: /g/data/ub8/au/MODIS/mosaic/MYD11A1.006/
     * NDVI: /g/data/ub8/au/OzWALD/8day/
 * Vegetation height: /g/data/ub8/LandCover/OzWALD_LC/
-* C4 grass over percentage: https://data.csiro.au/collection/csiro:58485
+* C4 grass cover percentage: https://data.csiro.au/collection/csiro:58485

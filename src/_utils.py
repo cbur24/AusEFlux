@@ -1,10 +1,6 @@
 # Some of this is COPIED FROM: https://github.com/opendatacube/datacube-core/blob/develop/datacube/utils/dask.py
 
 
-
-
-
-
 import os
 from random import randint
 import toolz  # type: ignore[import]
@@ -283,7 +279,7 @@ def xr_rasterize(
 
     return da_rasterized
 
-def round_coords(ds):
+def round_coords(ds, decimals=4):
     """
     Due to precision of float64 on coordinates, coordinates
     don't quite match after reprojection, resulting in adding spurious
@@ -292,7 +288,7 @@ def round_coords(ds):
     ds['latitude'] = ds.latitude.astype('float32')
     ds['longitude'] = ds.longitude.astype('float32')
     
-    ds['latitude'] = np.array([round(i,4) for i in ds.latitude.values])
-    ds['longitude'] = np.array([round(i,4) for i in ds.longitude.values])
+    ds['latitude'] = np.array([round(i,decimals) for i in ds.latitude.values])
+    ds['longitude'] = np.array([round(i,decimals) for i in ds.longitude.values])
     
     return ds
