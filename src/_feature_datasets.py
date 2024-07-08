@@ -128,7 +128,7 @@ def _vegetation_fractions(results,
                                         longitude=dask_chunks['longitude'])
                                     )
     #ndvi data is here
-    ds = xr.open_dataset(ndvi_path, chunks=dask_chunks)
+    ds = xr.open_dataarray(ndvi_path, chunks=dask_chunks)
 
     #calculate f-total
     ft = (ds - ndvi_min) / (ndvi_max - ndvi_min)

@@ -2,7 +2,7 @@
 
 The `Annual_update.ipynb` and `Historical.ipynb` notebooks contain extensively documented workflows for running AusEFlux. The notebooks mostly run the functions stored in the `AusEFlux/src/` folder.
 
-The `Historical` notebook contains the workflow for creating historical carbon and water fluxes for Australia through the full length of the MODIS archive (i.e., 2003-2022). It has six steps:
+The `Historical.ipynb` notebook contains the workflow for creating historical carbon and water fluxes for Australia through the full length of the MODIS archive (i.e., 2003-2022). It has six steps:
 1. Spatiotemporal harmonisation of input datasets
 2. The creation of feature datasets
 3. Extracting OzFlux eddy covaraince data from the Tern server and combining it with gridded remote sesning and climate datasets
@@ -10,7 +10,7 @@ The `Historical` notebook contains the workflow for creating historical carbon a
 5. Gridded ensemble predictions
 6. Combining ensembles in an ensemble median and uncertainty range
 
-The `Annual` notebook contains the workflow for annual updating of the product. It contains four main steps:
+The `Annual.ipynb` notebook contains the workflow for annual updating of the product. It contains four main steps:
 1. Spatiotemporal harmonisation of input datasets
 2. The creation of feature datasets
 3. Gridded ensemble predictions
