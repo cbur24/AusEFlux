@@ -2,27 +2,28 @@
 
 The `Annual_update.ipynb` and `Historical.ipynb` notebooks contain extensively documented workflows for running AusEFlux. The notebooks mostly run the functions stored in the `AusEFlux/src/` folder.
 
-The `Historical.ipynb` notebook contains the workflow for creating historical carbon and water fluxes for Australia through the full length of the MODIS archive (i.e., 2003-2022). It has six steps:
-1. Spatiotemporal harmonisation of input datasets
-2. The creation of feature datasets
-3. Extracting OzFlux eddy covaraince data from the Tern server and combining it with gridded remote sesning and climate datasets
-4. Generating an ensemble of models
-5. Gridded ensemble predictions
-6. Combining ensembles in an ensemble median and uncertainty range
-
-The `Annual.ipynb` notebook contains the workflow for annual updating of the product. It contains four main steps:
+The `Annual_update.ipynb` notebook contains the workflow for annual updating of the products. It contains four main steps:
 1. Spatiotemporal harmonisation of input datasets
 2. The creation of feature datasets
 3. Gridded ensemble predictions
-4. Combining ensembles in an ensemble median and uncertainty range
+4. Combining ensembles with an ensemble median and uncertainty range
 
-The final output of these notebooks are annual netcdf files for each carbon or water flux, for example: `AusEFlux_GPP_5km_quantiles_2003_v1.2.nc` where the naming convention is "AusEFlux-(flux)-(spatial resolution)-quantiles-(year)-(version).nc".  Results are stored in, for example, 'root_directory/results/AusEFlux/GPP/'
+The `Historical.ipynb` notebook contains the workflow for creating historical carbon and water fluxes for Australia through the full length of the MODIS archive (i.e., 2003-2022). It has six steps:
+1. Spatiotemporal harmonisation of input datasets
+2. The creation of feature datasets
+3. Extracting OzFlux eddy covaraince data from the TERN server and combining it with gridded remote sensing and climate datasets
+4. Generating an ensemble of models
+5. Gridded ensemble predictions
+6. Combining ensembles with an ensemble median and uncertainty range
 
+The final output of these notebooks are annual netcdf files for each carbon or water flux, for example: `AusEFlux_GPP_5km_quantiles_2003_v1.2.nc` where the naming convention is `"AusEFlux_[flux]_[spatial resolution]_quantiles_[year]_[version].nc`.  Results are stored in, for example, `'root_directory/results/AusEFlux/GPP/'`
+
+---
 * **analysis folder**: Notebooks in this folder describe various analysis workflows like intercomparisons with other products, plotting etc.
 
 * **annual_update folder**: Notebooks in this folder preserve the Jupyter notebooks used to develop the methods for annual updating of the product. These have been superceeded by the `Annual_update.ipynb` notebook which now runs the entire process.
 
-* **historical folder**: Notebooks in this folder preserve the Jupyter notebooks used to develop the methods for creating historical carbon and water fluxes for Australia through the full length of the MODIS archive (i.e., 2003-present). They are en superceeded by the `Historical.ipynb` notebook which now runs the entire process.
+* **historical folder**: Notebooks in this folder preserve the Jupyter notebooks used to develop the methods for creating historical carbon and water fluxes for Australia through the full length of the MODIS archive (i.e., 2003-present). They are superceeded by the `Historical.ipynb` notebook which now runs the entire process.
 
 ---
 **Data Sources:**
