@@ -1,3 +1,5 @@
+<img align="centre" src="banner_picture.png" width="100%">
+
 # Running AusEFlux
 
 The `Annual_update.ipynb` and `Historical.ipynb` notebooks contain extensively documented workflows for running AusEFlux. The notebooks mostly run the functions stored in the `AusEFlux/src/` folder.

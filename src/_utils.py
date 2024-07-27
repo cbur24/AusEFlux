@@ -160,8 +160,8 @@ def add_geobox(ds, crs=None):
     return ds
 
 
-def create_project_directories(root_dir):
-    data_dir = ['5km', 'interim', 'ozflux_netcdf', 'training_data']
+def create_project_directories(root_dir, target_grid='5km'):
+    data_dir = [target_grid, 'interim', 'ozflux_netcdf', 'training_data']
     results_dir = ['AusEFlux', 'cross_val', 'figs', 'models', 'predictions']
     main_dir = [data_dir, results_dir]
     main_dir_names = ['data', 'results']

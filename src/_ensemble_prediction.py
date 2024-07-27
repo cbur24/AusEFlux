@@ -20,6 +20,7 @@ def predict_ensemble(base,
                      features_list,
                      year_start,
                      year_end,
+                     target_grid='5km',
                      dask_chunks=dict(time=1),
                      compute_early=True,
                      verbose=True
@@ -33,7 +34,7 @@ def predict_ensemble(base,
     model_list = [file for file in os.listdir(models_folder) if file.endswith(".joblib")]
     
     ## open data
-    data = collect_prediction_data(data_path=f'{base}/data/5km/',
+    data = collect_prediction_data(data_path=f'{base}/data/{target_grid}/',
                                  time_range=(f'{year_start}',f'{year_end}'),
                                  verbose=False,
                                  export=False,
@@ -44,7 +45,7 @@ def predict_ensemble(base,
 
     # nodata masks and urban masks
     mask = data[['kNDVI','NDWI','VegH','SRAD']].to_array().isnull().any('variable').compute()
-    urban = xr.open_dataset(f'{base}data/urban_mask_5km.nc')['urban_mask']
+    urban = xr.open_dataset(f'{base}data/urban_mask_{target_grid}.nc')['urban_mask']
 
     # Index by variables and check variable order
     train_vars = list(pd.read_csv(features_list))[0:-1]

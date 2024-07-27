@@ -1,4 +1,5 @@
 import os
+import pickle
 import pandas as pd
 import xarray as xr
 import numpy as np
@@ -13,6 +14,7 @@ from _utils import round_coords
 
 def spatiotemporal_harmonisation(year_start,
                                  year_end,
+                                 target_grid = '5km',
                                  base_path='/g/data/ub8/au/',
                                  results_path='/g/data/os22/chad_tmp/AusEFlux/data/interim/',
                                  verbose=False
@@ -25,51 +27,54 @@ def spatiotemporal_harmonisation(year_start,
     #list of years to run
     years = [str(i) for i in range(year_start, year_end+1)]
 
-    # Grab a common grid to reproject too and a create a land mask
-    p = '/g/data/os22/chad_tmp/AusEFlux/data/WCF_5km_2003_2022.nc'
-    gbox = xr.open_dataset(p).odc.geobox
+    # Grab a common grid to reproject all datasets too 
+    gbox_path = f'/g/data/os22/chad_tmp/AusEFlux/data/grid_{target_grid}'
+    with open(gbox_path, 'rb') as f:
+        gbox = pickle.load(f)
 
+    # Create a land mask
     if verbose:
-        print('Create land/sea mask')
-    #create a mask of aus extent
-    mask = xr.open_dataset(p)['WCF']
-    mask = mask.mean('time')
-    mask = xr.where(mask>-99, 1, 0)
+        print('load land/sea mask')
+    
+    # Open a mask of aus extent as target resolution
+    p = f'/g/data/os22/chad_tmp/AusEFlux/data/land_sea_mask_{target_grid}.nc'
+    mask = xr.open_dataarray(p)
     
     #run NDWI
     if verbose:
         print('Process NDWI, estimated time 10 mins/year')
-    _modis_indices(years, 'NDWI', base_path, results_path, gbox, mask, verbose=verbose)
+    _modis_indices(years, 'NDWI', base_path, results_path, gbox, mask,target_grid=target_grid, verbose=verbose)
 
     #run kNDVI
     if verbose:
         print('Process kNDVI, estimated time 10 mins/year')
-    _modis_indices(years, 'kNDVI', base_path, results_path, gbox, mask, verbose=verbose)
+    _modis_indices(years, 'kNDVI', base_path, results_path, gbox, mask, target_grid=target_grid,verbose=verbose)
 
-    #run NDVI
+    #run NDVI & LAI
     if verbose:
-        print('Process NDVI, estimated time 1 min/year')
-    _ozwald_indices(years, 'NDVI', base_path, results_path, gbox, mask, verbose=verbose)
+        print('Process NDVI & LAI, estimated time 1 min/year')
+    _ozwald_indices(years, 'NDVI', base_path, results_path, gbox, mask, target_grid=target_grid, verbose=verbose)
+    _ozwald_indices(years, 'LAI', base_path, results_path, gbox, mask, target_grid=target_grid, verbose=verbose)
 
     #run LST
     if verbose:
         print('Process LST, estimated time 5 mins/year')
-    _modis_LST(years, 'LST', base_path, results_path, gbox, mask, verbose=verbose)
+    _modis_LST(years, 'LST', base_path, results_path, gbox, mask, target_grid=target_grid, verbose=verbose)
 
     #run VegH
     if verbose:
         print('Process Veg Height, estimated time 1 mins/year')
-    _veg_height(years, 'VegH', base_path, results_path, gbox, mask, verbose=verbose)
+    _veg_height(years, 'VegH', base_path, results_path, gbox, mask, target_grid=target_grid,verbose=verbose)
     
     #run temperature-average from ozwald
     if verbose:
         print('Process Tavg, estimated time 80 mins/year')
-    _ozwald_climate(years, 'Tavg', base_path, results_path, gbox, mask, verbose=verbose)
+    _ozwald_climate(years, 'Tavg', base_path, results_path, gbox, mask, target_grid=target_grid, verbose=verbose)
 
     #run SILO climate grids
     if verbose:
         print('Process SILO Climate, estimated time 5 seconds/year/variable')
-    _SILO_climate(years, None, base_path, results_path, gbox, mask, verbose=verbose)
+    _SILO_climate(years, None, base_path, results_path, gbox, mask, target_grid=target_grid,verbose=verbose)
 
 def _modis_indices(years,
                 var,
@@ -77,6 +82,7 @@ def _modis_indices(years,
                 results,
                 geobox,
                 mask,
+                target_grid='5km',
                 dask_chunks=dict(latitude=1000, longitude=1000, time=1),
                 verbose=False
                 ):
@@ -92,7 +98,7 @@ def _modis_indices(years,
     """
     for year in years:
     
-        if os.path.exists(f'{results}{var}/{var}_5km_{year}.nc'):
+        if os.path.exists(f'{results}{var}/{var}_{target_grid}_{year}.nc'):
                 continue
         else:
             if verbose:
@@ -148,7 +154,7 @@ def _modis_indices(years,
         if not os.path.exists(folder):
             os.makedirs(folder)
     
-        ds.astype('float32').to_netcdf(f'{results}{var}/{var}_5km_{year}.nc')
+        ds.astype('float32').to_netcdf(f'{results}{var}/{var}_{target_grid}_{year}.nc')
 
 
 def _ozwald_indices(years,
@@ -157,6 +163,7 @@ def _ozwald_indices(years,
                 results,
                 geobox,
                 mask,
+                target_grid='5km',
                 dask_chunks=dict(latitude=1000, longitude=1000, time=-1),
                 verbose=False
                    ):
@@ -174,7 +181,7 @@ def _ozwald_indices(years,
     
         for k,i in ozwald_vars.items():
              
-            if os.path.exists(f'{results}{k}/{k}_5km_{year}.nc'):
+            if os.path.exists(f'{results}{k}/{k}_{target_grid}_{year}.nc'):
                 continue
             else:
                 if verbose:
@@ -208,7 +215,7 @@ def _ozwald_indices(years,
             if not os.path.exists(folder):
                 os.makedirs(folder)
         
-            ds.astype('float32').to_netcdf(f'{results}{var}/{k}_5km_{year}.nc')
+            ds.astype('float32').to_netcdf(f'{results}{var}/{k}_{target_grid}_{year}.nc')
 
 def _modis_LST(years,
                 var,
@@ -216,6 +223,7 @@ def _modis_LST(years,
                 results,
                 geobox,
                 mask,
+                target_grid='5km',
                 dask_chunks=dict(latitude=500, longitude=500, time=-1),
                 verbose=False
                 ):
@@ -238,7 +246,7 @@ def _modis_LST(years,
     """
     for year in years:
     
-        if os.path.exists(f'{results}{var}/{var}_5km_{year}.nc'):
+        if os.path.exists(f'{results}{var}/{var}_{target_grid}_{year}.nc'):
                 continue
         else:
             if verbose:
@@ -271,8 +279,12 @@ def _modis_LST(years,
              #resample time
             ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).mean().persist()
         
-            # resample spatial
-            ds = ds.odc.reproject(geobox, resampling='average').compute()  # bring into memory
+             # resample spatial
+            if round(geobox.resolution.x, 3) == 0.01:
+                resampling='nearest'
+            else:
+                resampling='average'
+            ds = ds.odc.reproject(geobox, resampling=resampling).compute()
             
             #tidy up
             ds = round_coords(ds)
@@ -290,7 +302,7 @@ def _modis_LST(years,
             if not os.path.exists(folder):
                 os.makedirs(folder)
         
-            ds.astype('float32').to_netcdf(f'{results}{var}/{var}_5km_{year}.nc')
+            ds.astype('float32').to_netcdf(f'{results}{var}/{var}_{target_grid}_{year}.nc')
 
 def _veg_height(years,
                 var,
@@ -298,6 +310,7 @@ def _veg_height(years,
                 results,
                 geobox,
                 mask,
+                target_grid='5km',
                 dask_chunks=dict(latitude=250, longitude=250),
                 verbose=False
                 ):
@@ -314,6 +327,10 @@ def _veg_height(years,
     ds = assign_crs(ds, crs='epsg:4326')
     ds.attrs['nodata'] = np.nan
     ds = ds['VegH']
+    if target_grid=='5km':
+        resampling='average'
+    else:
+        resampling='nearest'
     ds = ds.odc.reproject(geobox, resampling='average').compute()
     ds = round_coords(ds)
     
@@ -321,14 +338,14 @@ def _veg_height(years,
     # open another dataset so we can grab the time dim
     for year in years:
         
-        if os.path.exists(f'{results}{var}/{var}_5km_{year}.nc'):
+        if os.path.exists(f'{results}{var}/{var}_{target_grid}_{year}.nc'):
                 continue
         else:
             if verbose:
                 print(' ', year)
 
         #open time dim from anotther dataset
-        da_time = xr.open_dataarray(f'{results}NDWI/NDWI_5km_{year}.nc').time
+        da_time = xr.open_dataarray(f'{results}NDWI/NDWI_{target_grid}_{year}.nc').time
         
         #expand time dim using other dataset's time.
         dss = ds.expand_dims(time=da_time)
@@ -338,7 +355,7 @@ def _veg_height(years,
         dss = dss.rename(var)
         
         # export
-        dss.to_netcdf(f'{results}{var}/{var}_5km_{year}.nc')
+        dss.to_netcdf(f'{results}{var}/{var}_{target_grid}_{year}.nc')
 
 def _ozwald_climate(years,
                 var,
@@ -346,6 +363,7 @@ def _ozwald_climate(years,
                 results,
                 geobox,
                 mask,
+                target_grid='5km',
                 dask_chunks=dict(latitude=10000, longitude=10000, time=1),
                 verbose=False
                    ):
@@ -367,7 +385,7 @@ def _ozwald_climate(years,
         
         for k,i in clim_inputs.items():
             
-            if os.path.exists(f'{results}/{k}/{k}_5km_{year}.nc'):
+            if os.path.exists(f'{results}/{k}/{k}_{target_grid}_{year}.nc'):
                 continue
             else:
                 if verbose:
@@ -382,11 +400,11 @@ def _ozwald_climate(years,
             
             #we need to spatial resample first to reduce RAM/speed up.
             if k=='kTavg':
-                #upscaling from 10km to 5km
+                #upscaling from 10km to target grid
                 ds = ds.odc.reproject(geobox, resampling='nearest').compute()
                 ds = round_coords(ds)
             else:
-                # downsacling from 500m to 5km
+                # downsacling from 500m to target grid
                 ds = ds.odc.reproject(geobox, resampling='average').compute()
                 ds = round_coords(ds)
     
@@ -400,18 +418,18 @@ def _ozwald_climate(years,
             if not os.path.exists(folder):
                 os.makedirs(folder)
             
-            ds.astype('float32').to_netcdf(f'{results}/{k}/{k}_5km_{year}.nc')
+            ds.astype('float32').to_netcdf(f'{results}/{k}/{k}_{target_grid}_{year}.nc')
 
     # -----------Step 2-----------------------------------------------
     for year in years:
     
         clim_inputs = {
-            'Tmin':f'{results}/Tmin/Tmin_5km_{year}.nc', 
-            'Tmax':f'{results}/Tmax/Tmax_5km_{year}.nc',
-            'kTavg':f'{results}/kTavg/kTavg_5km_{year}.nc'
+            'Tmin':f'{results}/Tmin/Tmin_{target_grid}_{year}.nc', 
+            'Tmax':f'{results}/Tmax/Tmax_{target_grid}_{year}.nc',
+            'kTavg':f'{results}/kTavg/kTavg_{target_grid}_{year}.nc'
              }
         
-        if os.path.exists(f'{results}{var}/{var}_5km_{year}.nc'):
+        if os.path.exists(f'{results}{var}/{var}_{target_grid}_{year}.nc'):
                 continue
         else:
             if verbose:
@@ -440,7 +458,7 @@ def _ozwald_climate(years,
         if not os.path.exists(folder):
             os.makedirs(folder)
     
-        ds.astype('float32').to_netcdf(f'{results}{var}/{var}_5km_{year}.nc')
+        ds.astype('float32').to_netcdf(f'{results}{var}/{var}_{target_grid}_{year}.nc')
 
 def _SILO_climate(years,
                 var,
@@ -448,6 +466,7 @@ def _SILO_climate(years,
                 results,
                 geobox,
                 mask,
+                target_grid='5km',
                 dask_chunks=dict(lat=250, lon=250, time=-1),
                 verbose=False
                    ):
@@ -466,7 +485,7 @@ def _SILO_climate(years,
             
             for k,i in clim_inputs.items():
                 
-                if os.path.exists(f'{results}/{k}/{k}_5km_{year}.nc'):
+                if os.path.exists(f'{results}/{k}/{k}_{target_grid}_{year}.nc'):
                     continue
                 else:
                     if verbose:
@@ -487,8 +506,12 @@ def _SILO_climate(years,
                 
                 if k in ['SRAD', 'VPD']:
                     method='nearest'
+                
                 if k=='rain':
-                    method='bilinear'
+                    if target_grid=='5km':
+                        method='bilinear'
+                    else:
+                       method='nearest' 
                 
                 ds = ds.odc.reproject(geobox, resampling=method).compute()
 
@@ -497,9 +520,9 @@ def _SILO_climate(years,
                     ds = round_coords(ds)
                     ds = assign_crs(ds, crs='epsg:4326')
                     ds = ds.where(mask)
-                    ta = xr.open_dataarray(f'{results}/Tavg/Tavg_5km_{year}.nc')
+                    ta = xr.open_dataarray(f'{results}/Tavg/Tavg_{target_grid}_{year}.nc')
                     sat_vp = (6.11 * np.exp((2500000/461) * (1/273 - 1/(273 + ta))))
-                    ds = sat_vp - ds# tidy up
+                    ds = sat_vp - ds
                     ds = ds.rename(k)
                     ds.attrs['nodata'] = np.nan
                     ds.attrs['units'] = 'hPa'
@@ -516,7 +539,7 @@ def _SILO_climate(years,
                 if not os.path.exists(folder):
                     os.makedirs(folder)
                 
-                ds.astype('float32').to_netcdf(f'{results}/{k}/{k}_5km_{year}.nc')
+                ds.astype('float32').to_netcdf(f'{results}/{k}/{k}_{target_grid}_{year}.nc')
     
 
 

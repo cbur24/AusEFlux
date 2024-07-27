@@ -17,6 +17,7 @@ def combine_ensemble(base,
                      year_start,
                      year_end,
                      attrs,
+                     target_grid='5km',
                      quantiles=[0.25,0.5,0.75],
                      dask_chunks=dict(x=1000, y=1000, time=1),
                      verbose=True
@@ -71,7 +72,7 @@ def combine_ensemble(base,
     version=attrs['version']
     for year in years:
         xx = ds.sel(time=year)
-        xx.to_netcdf(f'{results_path}/AusEFlux_{model_var}_5km_quantiles_{year}_{version}.nc')
+        xx.to_netcdf(f'{results_path}/AusEFlux_{model_var}_{target_grid}_quantiles_{year}_{version}.nc')
     
 
    

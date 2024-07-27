@@ -1,4 +1,5 @@
 import os
+import pickle
 import pandas as pd
 import xarray as xr
 import rioxarray as rxr
@@ -15,8 +16,8 @@ warnings.simplefilter(action='ignore')
 def create_feature_datasets(base,
                             results_path,
                             exclude,
-                            dask_chunks=dict(time=-1,
-                                    latitude=250, longitude=250),
+                            target_grid='5km',
+                            dask_chunks=dict(time=-1, latitude=250, longitude=250),
                             verbose=False
 ):
     """
@@ -75,38 +76,37 @@ def create_feature_datasets(base,
         
         ds = ds.drop('month').compute()
     
-        ds.to_netcdf(results_path+f+'_5km.nc')
+        ds.to_netcdf(f'{results_path}{f}_{target_grid}.nc')
 
     #---step 2 Create new features--------------------
     #veg fraction
     if verbose:
         print('Vegetation fractions')
-    _vegetation_fractions(results=results_path)
+    _vegetation_fractions(results=results_path, target_grid=target_grid)
     
     if verbose:
         print('Cumulative rainfall')
-    _cumulative_rainfall(results_path+'rain_5km.nc', results=results_path)
+    _cumulative_rainfall(f'{results_path}rain_{target_grid}.nc', target_grid=target_grid, results=results_path)
     
     if verbose:
         print('Fractional anomalies')
-    _fractional_anomalies(results=results_path, verbose=verbose)
+    _fractional_anomalies(results=results_path,  target_grid=target_grid, verbose=verbose)
 
     if verbose:
         print('LST minus Tair')
-    tair = xr.open_dataarray(results_path+'Tavg_5km.nc')
-    lst = xr.open_dataarray(results_path+'LST_5km.nc')
+    tair = xr.open_dataarray(f'{results_path}Tavg_{target_grid}.nc')
+    lst = xr.open_dataarray(f'{results_path}LST_{target_grid}.nc')
     deltaT = lst - tair
     deltaT.name = u'ΔT'
-    deltaT.to_netcdf(results_path+u'ΔT_5km.nc')
+    deltaT.to_netcdf(results_path+u'ΔT_'+target_grid+'.nc')
 
     if verbose:
         print('C4 grass fraction')
-    _c4_grass_fraction(results=results_path)
+    _c4_grass_fraction(results=results_path, target_grid=target_grid)
 
 
 def _vegetation_fractions(results,
-                          ndvi_path='/g/data/os22/chad_tmp/AusEFlux/data/5km/NDVI_5km.nc',
-                          ndvi_min='/g/data/os22/chad_tmp/AusEFlux/data/ndvi_of_baresoil_5km.nc',
+                          target_grid='5km',
                           ndvi_max=0.91,
                           dask_chunks=dict(latitude=250, longitude=250, time=-1)
 ):
@@ -116,17 +116,18 @@ def _vegetation_fractions(results,
 
     Requires NDVI (not any other vegetation index).
 
-    `ndvi_min` can be either a path to a tif/nc file that describes the minimum NDVI possible for
-    a given pixel, or a simple float value. ndvi_min = 0.141 is a good default.
+    `ndvi_min` is the minimum NDVI that a pixel can achieve, this was computed
+    for Australia and supplied by Dr Luigi Renzullo.
     
     """
+    ndvi_path=f'/g/data/os22/chad_tmp/AusEFlux/data/5km/NDVI_{target_grid}.nc',
+    ndvi_min_path =f'/g/data/os22/chad_tmp/AusEFlux/data/ndvi_of_baresoil_{target_grid}.nc',
     
     # NDVI value of bare soil (supplied by Luigi Renzullo)
-    if isinstance(ndvi_min, str):
-        ndvi_min = xr.open_dataarray(ndvi_min,
-                                    chunks=dict(latitude=dask_chunks['latitude'],
-                                        longitude=dask_chunks['longitude'])
-                                    )
+    ndvi_min = xr.open_dataarray(ndvi_min_path,
+                                chunks=dict(latitude=dask_chunks['latitude'],
+                                longitude=dask_chunks['longitude'])
+                                )
     #ndvi data is here
     ds = xr.open_dataarray(ndvi_path, chunks=dask_chunks)
 
@@ -201,13 +202,14 @@ def _vegetation_fractions(results,
     bare = assign_crs(bare, crs='EPSG:4326')
 
     #export
-    trees.to_netcdf(results+'trees_5km.nc')
-    grass.to_netcdf(results+'grass_5km.nc')
-    bare.to_netcdf(results+'bare_5km.nc')
+    trees.to_netcdf(f'{results}trees_{target_grid}.nc')
+    grass.to_netcdf(f'{results}grass_{target_grid}.nc')
+    bare.to_netcdf(f'{results}bare_{target_grid}.nc')
 
 def _cumulative_rainfall(rain_path,
                          results,
-                        dask_chunks=dict(latitude=300, longitude=300)
+                         target_grid='5km',
+                         dask_chunks=dict(latitude=300, longitude=300)
 ):
     
     rain = xr.open_dataarray(rain_path,chunks=dask_chunks)
@@ -220,32 +222,28 @@ def _cumulative_rainfall(rain_path,
     rain_cml_12 = rain.rolling(time=12, min_periods=12).sum()
     rain_cml_12 = rain_cml_12.rename('rain_cml12').sel(time=slice('2003','2052'))
 
-    rain_cml_3.compute().to_netcdf(results+'rain_cml3_5km.nc')
-    rain_cml_6.compute().to_netcdf(results+'rain_cml6_5km.nc')
-    rain_cml_12.compute().to_netcdf(results+'rain_cml12_5km.nc')
+    rain_cml_3.compute().to_netcdf(f'{results}rain_cml3_{target_grid}.nc')
+    rain_cml_6.compute().to_netcdf(f'{results}rain_cml6_{target_grid}.nc')
+    rain_cml_12.compute().to_netcdf(f'{results}rain_cml12_{target_grid}.nc')
 
 def _fractional_anomalies(results,
-                          vars=['NDWI', 'kNDVI', 'rain', 'rain_cml3','rain_cml6',
+                          target_grid='5km',
+                          vars=['NDWI', 'kNDVI','LAI','rain', 'rain_cml3','rain_cml6',
                                'rain_cml12', 'SRAD','Tavg', 'VPD'],
                           verbose=True
 ):
     
     for v in vars:
-        
-        # if os.path.exists(results+v+'_anom_5km.nc'):
-        #     if verbose:
-        #         print('',v+' exists, skipping')
-        #     continue
-        # else:
         if verbose:
             print(' ', v)
-        ds = assign_crs(xr.open_dataset(results+v+'_5km.nc'), crs='EPSG:4326')
+        ds = assign_crs(xr.open_dataset(f'{results}{v}_{target_grid}.nc'), crs='EPSG:4326')
         mean = ds.groupby("time.month").mean("time")
         frac = ds.groupby("time.month") / mean
-        frac.drop('month').rename({v:v+'_anom'}).to_netcdf(results+v+'_anom_5km.nc')
+        frac.drop('month').rename({v:v+'_anom'}).to_netcdf(f'{results}{v}_anom_{target_grid}.nc')
 
 
 def _c4_grass_fraction(results,
+                       target_grid='5km',
                        c4_path='/g/data/os22/chad_tmp/AusEFlux/data/Aust_C4_grass_cover_percentage.tif',
                        dask_chunks=dict(x=1500, y=1500)
     
@@ -253,13 +251,14 @@ def _c4_grass_fraction(results,
     ds = rxr.open_rasterio(c4_path,chunks=dask_chunks).squeeze().drop('band')
     ds = assign_crs(ds, crs='epsg:4326')
 
-   # Grab a common grid to reproject too and a create a land mask
-    p = '/g/data/os22/chad_tmp/AusEFlux/data/WCF_5km_2003_2022.nc'
-    gbox = xr.open_dataset(p).odc.geobox
-    #create a mask of aus extent
-    mask = xr.open_dataset(p)['WCF']
-    mask = mask.mean('time')
-    mask = xr.where(mask>-99, 1, 0)
+    # Grab a common grid to reproject too
+    gbox_path = f'/g/data/os22/chad_tmp/AusEFlux/data/grid_{target_grid}'
+    with open(save_file, 'rb') as f:
+        gbox = pickle.load(f)
+
+    # Open a mask of aus extent at target resolution
+    p = f'/g/data/os22/chad_tmp/AusEFlux/data/land_sea_mask_{target_grid}.nc'
+    mask = xr.open_dataarray(p)
 
     #reproject
     ds = ds.where(ds>=0).odc.reproject(gbox, resampling='average').compute()
@@ -267,9 +266,10 @@ def _c4_grass_fraction(results,
     ds = ds.where(mask)
     ds = ds/100 #convert to fraction
 
-    grass = xr.open_dataset(results+'grass_5km.nc')['grass']
+    grass = xr.open_dataset(f'{results}grass_{target_grid}.nc')['grass']
     c4_grass = grass * ds #fraction of grass that is C4
     c4_grass = c4_grass.rename('C4_grass')
     c4_grass.attrs['nodata']=np.nan
 
-    c4_grass.to_netcdf(results+'C4_grass_5km.nc')
+    c4_grass.to_netcdf(f'{results}C4_grass_{target_grid}.nc')
+
