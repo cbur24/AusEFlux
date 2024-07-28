@@ -120,8 +120,8 @@ def _vegetation_fractions(results,
     for Australia and supplied by Dr Luigi Renzullo.
     
     """
-    ndvi_path=f'/g/data/os22/chad_tmp/AusEFlux/data/5km/NDVI_{target_grid}.nc',
-    ndvi_min_path =f'/g/data/os22/chad_tmp/AusEFlux/data/ndvi_of_baresoil_{target_grid}.nc',
+    ndvi_path=f'/g/data/os22/chad_tmp/AusEFlux/data/5km/NDVI_{target_grid}.nc'
+    ndvi_min_path =f'/g/data/os22/chad_tmp/AusEFlux/data/ndvi_of_baresoil_{target_grid}.nc'
     
     # NDVI value of bare soil (supplied by Luigi Renzullo)
     ndvi_min = xr.open_dataarray(ndvi_min_path,
@@ -253,7 +253,7 @@ def _c4_grass_fraction(results,
 
     # Grab a common grid to reproject too
     gbox_path = f'/g/data/os22/chad_tmp/AusEFlux/data/grid_{target_grid}'
-    with open(save_file, 'rb') as f:
+    with open(gbox_path, 'rb') as f:
         gbox = pickle.load(f)
 
     # Open a mask of aus extent at target resolution
