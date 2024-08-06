@@ -17,7 +17,7 @@ def create_feature_datasets(base,
                             results_path,
                             exclude,
                             target_grid='5km',
-                            dask_chunks=dict(time=-1, latitude=250, longitude=250),
+                            dask_chunks=dict(time=-1, latitude=1000, longitude=1000),
                             verbose=False
 ):
     """
@@ -37,78 +37,83 @@ def create_feature_datasets(base,
     
     for f in folders:
         
-        # if os.path.exists(results_path+f+'_5km.nc'):
-        #     if verbose:
-        #         print(' ',f+' exists, skipping')
-        #     continue
-        # else:
-        #     if verbose:
-        print(' ',f)
+        if os.path.exists(f'{results_path}{f}_{target_grid}.nc'):
+            if verbose:
+                print(' ',f+' exists, skipping')
+            continue
         
-        files = [f'{base}{f}/{i}' for i in os.listdir(base+f) if i.endswith(".nc")]
-        files.sort()
-    
-        #combine annual files into one file
-        ds = xr.open_mfdataset(files)
-        ds = ds.chunk(dask_chunks)
-                      
-        # Gapfill NDWI & kNDVI differently (has real gaps)
-        if f in ['NDWI', 'kNDVI']:
-            # seperate into climatologies and anomalies
-            ds_monthly = ds.groupby('time.month').mean()
-            ds_anom = ds.groupby('time.month') - ds_monthly  
-            
-            # fill linearly by max 2 steps
-            ds_anom = ds_anom.interpolate_na(dim='time', method='linear', limit=2)
-            
-            #recombine anomalies and climatology
-            ds = ds_anom.groupby('time.month') + ds_monthly
-            ds = ds.drop('month')
-            
-            #fill remaining gaps with climatology
-            ds = ds.groupby("time.month").fillna(ds_monthly)
-    
-        # ensure no gaps in other datasets (there shouldn't be any)
-        # this is just to be cautious
         else:
-            ds_monthly = ds.groupby('time.month').mean()
-            ds = ds.groupby("time.month").fillna(ds_monthly)
+            if verbose:
+                print(' ',f)
         
-        ds = ds.drop('month').compute()
-    
-        ds.to_netcdf(f'{results_path}{f}_{target_grid}.nc')
+            files = [f'{base}{f}/{i}' for i in os.listdir(base+f) if i.endswith(".nc")]
+            files.sort()
+        
+            #combine annual files into one file
+            ds = xr.open_mfdataset(files)
+            ds = ds.chunk(dask_chunks)
+                          
+            # Gapfill NDWI & kNDVI differently (has real gaps)
+            if f in ['NDWI', 'kNDVI']:
+                # seperate into climatologies and anomalies
+                ds_monthly = ds.groupby('time.month').mean()
+                ds_anom = ds.groupby('time.month') - ds_monthly  
+                
+                # fill linearly by max 2 steps
+                ds_anom = ds_anom.interpolate_na(dim='time', method='linear', limit=2)
+                
+                #recombine anomalies and climatology
+                ds = ds_anom.groupby('time.month') + ds_monthly
+                ds = ds.drop('month')
+                
+                #fill remaining gaps with climatology
+                ds = ds.groupby("time.month").fillna(ds_monthly)
+        
+            # ensure no gaps in other datasets (there shouldn't be any)
+            # this is just to be cautious
+            else:
+                ds_monthly = ds.groupby('time.month').mean()
+                ds = ds.groupby("time.month").fillna(ds_monthly)
+            
+            ds = ds.drop('month').compute()
+
+            #ensure every dataset goes from 2003 onwards
+            if f=='rain':
+                ds.to_netcdf(f'{results_path}{f}_{target_grid}_extrayear.nc')
+            else:
+                ds.to_netcdf(f'{results_path}{f}_{target_grid}.nc')
 
     #---step 2 Create new features--------------------
     #veg fraction
-    if verbose:
-        print('Vegetation fractions')
-    _vegetation_fractions(results=results_path, target_grid=target_grid)
+    # if verbose:
+    #     print('Vegetation fractions')
+    # _vegetation_fractions(results=results_path, target_grid=target_grid)
     
     if verbose:
         print('Cumulative rainfall')
-    _cumulative_rainfall(f'{results_path}rain_{target_grid}.nc', target_grid=target_grid, results=results_path)
+    _cumulative_rainfall(f'{results_path}rain_{target_grid}_extrayear.nc', target_grid=target_grid, results=results_path)
     
     if verbose:
         print('Fractional anomalies')
     _fractional_anomalies(results=results_path,  target_grid=target_grid, verbose=verbose)
 
-    if verbose:
-        print('LST minus Tair')
-    tair = xr.open_dataarray(f'{results_path}Tavg_{target_grid}.nc')
-    lst = xr.open_dataarray(f'{results_path}LST_{target_grid}.nc')
-    deltaT = lst - tair
-    deltaT.name = u'ΔT'
-    deltaT.to_netcdf(results_path+u'ΔT_'+target_grid+'.nc')
+    # if verbose:
+    #     print('LST minus Tair')
+    # tair = xr.open_dataarray(f'{results_path}Tavg_{target_grid}.nc')
+    # lst = xr.open_dataarray(f'{results_path}LST_{target_grid}.nc')
+    # deltaT = lst - tair
+    # deltaT.name = u'ΔT'
+    # deltaT.to_netcdf(results_path+u'ΔT_'+target_grid+'.nc')
 
-    if verbose:
-        print('C4 grass fraction')
-    _c4_grass_fraction(results=results_path, target_grid=target_grid)
+    # if verbose:
+    #     print('C4 grass fraction')
+    # _c4_grass_fraction(results=results_path, target_grid=target_grid)
 
 
 def _vegetation_fractions(results,
                           target_grid='5km',
                           ndvi_max=0.91,
-                          dask_chunks=dict(latitude=250, longitude=250, time=-1)
+                          dask_chunks=dict(latitude=750, longitude=750, time=-1)
 ):
     """
     Calculate per-pixel fraction of trees, grass, bare using the methods defined by
@@ -120,7 +125,7 @@ def _vegetation_fractions(results,
     for Australia and supplied by Dr Luigi Renzullo.
     
     """
-    ndvi_path=f'/g/data/os22/chad_tmp/AusEFlux/data/5km/NDVI_{target_grid}.nc'
+    ndvi_path=f'/g/data/os22/chad_tmp/AusEFlux/data/{target_grid}/NDVI_{target_grid}.nc'
     ndvi_min_path =f'/g/data/os22/chad_tmp/AusEFlux/data/ndvi_of_baresoil_{target_grid}.nc'
     
     # NDVI value of bare soil (supplied by Luigi Renzullo)
@@ -209,7 +214,7 @@ def _vegetation_fractions(results,
 def _cumulative_rainfall(rain_path,
                          results,
                          target_grid='5km',
-                         dask_chunks=dict(latitude=300, longitude=300)
+                         dask_chunks=dict(latitude=1000, longitude=1000)
 ):
     
     rain = xr.open_dataarray(rain_path,chunks=dask_chunks)
@@ -226,20 +231,29 @@ def _cumulative_rainfall(rain_path,
     rain_cml_6.compute().to_netcdf(f'{results}rain_cml6_{target_grid}.nc')
     rain_cml_12.compute().to_netcdf(f'{results}rain_cml12_{target_grid}.nc')
 
+    #remove extra year from rainfall now that cumulative anomalies have been calculated
+    rain.sel(time=slice('2003','2052')).to_netcdf(f'{results}rain_{target_grid}.nc')
+    #remove now unnecessary file
+    os.remove(f'{results}rain_{target_grid}_extrayear.nc')
+    
+
 def _fractional_anomalies(results,
                           target_grid='5km',
-                          vars=['NDWI', 'kNDVI','LAI','rain', 'rain_cml3','rain_cml6',
-                               'rain_cml12', 'SRAD','Tavg', 'VPD'],
+                          vars=[#'NDWI', 'SRAD','Tavg', 'VPD','kNDVI','LAI',
+                                'rain', 'rain_cml3','rain_cml6', 'rain_cml12'
+                               ],
+                          dask_chunks=dict(latitude=1000, longitude=1000),
                           verbose=True
 ):
     
     for v in vars:
         if verbose:
             print(' ', v)
-        ds = assign_crs(xr.open_dataset(f'{results}{v}_{target_grid}.nc'), crs='EPSG:4326')
+        ds = assign_crs(xr.open_dataset(f'{results}{v}_{target_grid}.nc',chunks=dask_chunks), crs='EPSG:4326')
         mean = ds.groupby("time.month").mean("time")
         frac = ds.groupby("time.month") / mean
-        frac.drop('month').rename({v:v+'_anom'}).to_netcdf(f'{results}{v}_anom_{target_grid}.nc')
+        frac = frac.drop('month').rename({v:v+'_anom'}).sel(time=slice('2003','2052'))
+        frac.to_netcdf(f'{results}{v}_anom_{target_grid}.nc')
 
 
 def _c4_grass_fraction(results,

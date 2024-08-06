@@ -74,6 +74,12 @@ def spatiotemporal_harmonisation(year_start,
     #run SILO climate grids
     if verbose:
         print('Process SILO Climate, estimated time 5 seconds/year/variable')
+    
+    # update the list of years to run by adding an extra year at the start. This is
+    # because later we will calculate cumulative rainfall and the first year of the
+    # cumulative rainfll timeseries will have NaN values, so process a year earlier than
+    # desired and later drop that extra year.
+    years = [str(i) for i in range(year_start-1, year_end+1)]
     _SILO_climate(years, None, base_path, results_path, gbox, mask, target_grid=target_grid,verbose=verbose)
 
 def _modis_indices(years,
@@ -224,7 +230,7 @@ def _modis_LST(years,
                 geobox,
                 mask,
                 target_grid='5km',
-                dask_chunks=dict(latitude=500, longitude=500, time=-1),
+                dask_chunks=dict(latitude=1000, longitude=1000, time=-1),
                 verbose=False
                 ):
 
@@ -354,6 +360,11 @@ def _veg_height(years,
         dss = dss.where(mask)
         dss = dss.rename(var)
         
+        #export result
+        folder = f'{results}{var}'
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        
         # export
         dss.to_netcdf(f'{results}{var}/{var}_{target_grid}_{year}.nc')
 
@@ -364,7 +375,7 @@ def _ozwald_climate(years,
                 geobox,
                 mask,
                 target_grid='5km',
-                dask_chunks=dict(latitude=10000, longitude=10000, time=1),
+                dask_chunks=dict(latitude=5000, longitude=5000, time=1),
                 verbose=False
                    ):
 
@@ -398,6 +409,9 @@ def _ozwald_climate(years,
             ds = ds.squeeze().drop_vars('variable')
             ds.attrs['nodata'] = np.nan
             
+            #resample time
+            ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).mean().persist()
+            
             #we need to spatial resample first to reduce RAM/speed up.
             if k=='kTavg':
                 #upscaling from 10km to target grid
@@ -407,7 +421,10 @@ def _ozwald_climate(years,
                 # downsacling from 500m to target grid
                 ds = ds.odc.reproject(geobox, resampling='average').compute()
                 ds = round_coords(ds)
-    
+
+            #resample time
+            # ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).mean()
+
             #tidy up
             ds = ds.transpose('time', 'latitude', 'longitude')
             ds = ds.rename(k)
@@ -443,8 +460,8 @@ def _ozwald_climate(years,
         #calculate tavg
         ds = d['Tmin'] + d['kTavg']*(d['Tmax'] - d['Tmin'])
     
-        #resample time
-        ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).mean()
+        # #resample time
+        # ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).mean()
         
         #tidy up
         ds.attrs['nodata'] = np.nan
@@ -476,7 +493,7 @@ def _SILO_climate(years,
     """
     #loop through each year
     for year in years:
-        
+            
             clim_inputs = {
                 'SRAD':'SILO/radiation/'+year+'.radiation.nc',
                 'rain':'SILO/daily_rain/'+year+'.daily_rain.nc',
@@ -484,6 +501,9 @@ def _SILO_climate(years,
                  }
             
             for k,i in clim_inputs.items():
+                
+                if (year=='2002') & (k!='rain'):
+                    continue
                 
                 if os.path.exists(f'{results}/{k}/{k}_{target_grid}_{year}.nc'):
                     continue
@@ -505,13 +525,13 @@ def _SILO_climate(years,
                     ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).mean()
                 
                 if k in ['SRAD', 'VPD']:
-                    method='nearest'
-                
-                if k=='rain':
-                    if target_grid=='5km':
+                    if target_grid=='1km':
                         method='bilinear'
                     else:
-                       method='nearest' 
+                        method='nearest'
+                
+                if k=='rain':
+                    method='bilinear'
                 
                 ds = ds.odc.reproject(geobox, resampling=method).compute()
 

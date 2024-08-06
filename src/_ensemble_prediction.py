@@ -14,6 +14,7 @@ from _prediction import collect_prediction_data, predict_xr, HiddenPrints
 from _utils import round_coords
 
 def predict_ensemble(base,
+                     prediction_data,
                      model_var,
                      results_path,
                      models_folder,
@@ -34,16 +35,18 @@ def predict_ensemble(base,
     model_list = [file for file in os.listdir(models_folder) if file.endswith(".joblib")]
     
     ## open data
-    data = collect_prediction_data(data_path=f'{base}/data/{target_grid}/',
+    data = collect_prediction_data(data_path=f'{prediction_data}/{target_grid}/',
                                  time_range=(f'{year_start}',f'{year_end}'),
                                  verbose=False,
                                  export=False,
-                                 chunks=dict(time=1)
+                                 chunks=dask_chunks
                                  )
     if compute_early:
         data = data.compute()
 
     # nodata masks and urban masks
+    if verbose:
+        print('Creating no-data mask')
     mask = data[['kNDVI','NDWI','VegH','SRAD']].to_array().isnull().any('variable').compute()
     urban = xr.open_dataset(f'{base}data/urban_mask_{target_grid}.nc')['urban_mask']
 
@@ -89,6 +92,7 @@ def predict_ensemble(base,
                                     data.isel(time=i),
                                     proba=False,
                                     clean=True,
+                                    chunk_size=875000, #this number is optimized to maximise pred speed at 1km.
                                       ).compute()
     
                 #mask no-data areas

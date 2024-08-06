@@ -1,4 +1,4 @@
-<img align="centre" src="banner_picture.png" width="100%">
+<img align="centre" src="https://github.com/cbur24/AusEFlux/blob/master/banner_picture.png?raw=True" width="100%">
 
 # Running AusEFlux
 
