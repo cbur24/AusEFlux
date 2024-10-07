@@ -322,10 +322,15 @@ def ensemble_feature_importance(
     dffs=[]
     i=1
     for m in model_list:
+        
         if verbose:
             print(f"{i}/{len(model_list)}", end='\r')
         
-        explainer = shap.TreeExplainer(model = load(models_folder+m))
+        if 'rf' in m:
+            continue
+        else:
+            print(m)
+            explainer = shap.TreeExplainer(model = load(models_folder+m))
         
         shap_values = explainer(x)
         vals = np.abs(shap_values.values).mean(0)

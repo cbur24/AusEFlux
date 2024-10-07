@@ -47,7 +47,7 @@ def predict_ensemble(base,
     # nodata masks and urban masks
     if verbose:
         print('Creating no-data mask')
-    mask = data[['kNDVI','NDWI','VegH','SRAD']].to_array().isnull().any('variable').compute()
+    mask = data[['kNDVI','LAI','VegH','SRAD']].to_array().isnull().any('variable').compute()
     urban = xr.open_dataset(f'{base}data/urban_mask_{target_grid}.nc')['urban_mask']
 
     # Index by variables and check variable order
