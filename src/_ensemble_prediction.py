@@ -48,7 +48,7 @@ def predict_ensemble(base,
     if verbose:
         print('Creating no-data mask')
     mask = data[['kNDVI','LAI','VegH','SRAD']].to_array().isnull().any('variable').compute()
-    urban = xr.open_dataset(f'{base}data/urban_water_mask_{target_grid}.nc')['urban_mask']
+    urban = xr.open_dataset(f'{base}data/urban_water_mask_{target_grid}.nc')['urban_water_mask']
 
     # Index by variables and check variable order
     train_vars = list(pd.read_csv(features_list))[0:-1]
