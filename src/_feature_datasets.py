@@ -85,9 +85,9 @@ def create_feature_datasets(base,
 
     #---step 2 Create new features--------------------
     #veg fraction
-    # if verbose:
-    #     print('Vegetation fractions')
-    # _vegetation_fractions(results=results_path, target_grid=target_grid)
+    if verbose:
+        print('Vegetation fractions')
+    _vegetation_fractions(results=results_path, target_grid=target_grid)
     
     if verbose:
         print('Cumulative rainfall')
@@ -97,17 +97,17 @@ def create_feature_datasets(base,
         print('Fractional anomalies')
     _fractional_anomalies(results=results_path,  target_grid=target_grid, verbose=verbose)
 
-    # if verbose:
-    #     print('LST minus Tair')
-    # tair = xr.open_dataarray(f'{results_path}Tavg_{target_grid}.nc')
-    # lst = xr.open_dataarray(f'{results_path}LST_{target_grid}.nc')
-    # deltaT = lst - tair
-    # deltaT.name = u'ΔT'
-    # deltaT.to_netcdf(results_path+u'ΔT_'+target_grid+'.nc')
+    if verbose:
+        print('LST minus Tair')
+    tair = xr.open_dataarray(f'{results_path}Tavg_{target_grid}.nc')
+    lst = xr.open_dataarray(f'{results_path}LST_{target_grid}.nc')
+    deltaT = lst - tair
+    deltaT.name = u'ΔT'
+    deltaT.to_netcdf(results_path+u'ΔT_'+target_grid+'.nc')
 
-    # if verbose:
-    #     print('C4 grass fraction')
-    # _c4_grass_fraction(results=results_path, target_grid=target_grid)
+    if verbose:
+        print('C4 grass fraction')
+    _c4_grass_fraction(results=results_path, target_grid=target_grid)
 
 
 def _vegetation_fractions(results,
