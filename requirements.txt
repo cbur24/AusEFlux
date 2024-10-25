@@ -16,7 +16,7 @@ xarray[complete]
 rioxarray
 pandas
 geopandas
-odc-geo
+odc-geo==0.4.2
 
 # ML
 lightgbm
