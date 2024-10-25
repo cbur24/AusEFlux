@@ -21,7 +21,7 @@ def predict_ensemble(base,
                      features_list,
                      year_start,
                      year_end,
-                     target_grid='5km',
+                     target_grid='1km',
                      dask_chunks=dict(time=1),
                      compute_early=True,
                      verbose=True

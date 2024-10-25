@@ -309,7 +309,7 @@ def ensemble_feature_importance(
     feature in each model iteration, and subsequently averaging
     those values across all the models in the ensemble.
 
-    LGBM model run quickly, the RF models runs extremely slowly 
+    LGBM models run quickly, the RF models runs extremely slowly
     """
     
     models_folder = f'{base}results/models/ensemble/{model_var}/'
@@ -326,7 +326,7 @@ def ensemble_feature_importance(
         if verbose:
             print(f"{i}/{len(model_list)}", end='\r')
         
-        if 'rf' in m:
+        if 'rf' in m: #temp. skipping RF models to get quick results
             continue
         else:
             print(m)
