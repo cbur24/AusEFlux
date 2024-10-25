@@ -423,7 +423,7 @@ def _ozwald_climate(years,
                 ds = round_coords(ds)
 
             #resample time
-            # ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).mean()
+            ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).mean()
 
             #tidy up
             ds = ds.transpose('time', 'latitude', 'longitude')

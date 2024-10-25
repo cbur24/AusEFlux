@@ -64,7 +64,7 @@ def xr_quantile(
     :param nodata: The `nodata` value
     """
     data_vars={}
-    xx_data = src.data
+    xx_data = src.values
     out_dims = ("quantile",) + src.dims[1:]
 
     # if dask.is_dask_collection(xx_data):

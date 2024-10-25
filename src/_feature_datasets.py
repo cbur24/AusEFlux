@@ -169,7 +169,7 @@ def _vegetation_fractions(results,
     bare_annual = 1-(persist_annual+recurrent_annual)
     bare_annual.name='bare'
 
-    #create a monthly timeseries (same vale for each month within a year)
+    #create a monthly timeseries (same value for each month within a year)
     dss_trees=[]
     dss_grass=[]
     dss_bare=[]
