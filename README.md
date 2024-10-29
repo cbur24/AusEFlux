@@ -5,6 +5,8 @@
 
 AusEFlux (**Aus**tralian **E**mpirical **Flux**es) is a high resolution (1 km) _operational_ gridded estimate of Gross Primary Productivity, Ecosystem Respiration, Net Ecosystem Exchange, and Evapo-transpiration over the Australian continent for the period January 2003 to present.  This new estimate of Australia’s terrestrial carbon cycle provides a benchmark for assessment against Land Surface Model simulations, and a means for monitoring of Australia’s terrestrial carbon cycle at an unprecedented high-resolution.
 
+**The datasets are free and openly available through the NCI's high-performance THREDDS data service:** https://thredds.nci.org.au/thredds/catalog/ub8/au/AusEFlux/catalog.html
+
 * The `notebooks/` folder contains all the methods and instructions for running the workflow.
 * The `src/` foder contains the python scripts for supporting the workflows. 
 
