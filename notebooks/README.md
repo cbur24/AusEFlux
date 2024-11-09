@@ -20,11 +20,12 @@ The `Historical.ipynb` notebook contains the workflow for creating historical ca
 
 The final output of these notebooks are annual netcdf files for each carbon or water flux, for example: `AusEFlux_GPP_5km_quantiles_2003_v1.2.nc` where the naming convention is `"AusEFlux_[flux]_[spatial resolution]_quantiles_[year]_[version].nc`.  Results are stored in, for example, `'root_directory/results/AusEFlux/GPP/'`
 
----
+***
 **`analysis` folder**: Notebooks in this folder describe various analysis workflows like intercomparisons with other products, plotting etc.
 
----
-**Data Sources:**
+***
+
+**Key Data Sources:**
 * OzFlux eddy covariance flux tower data:
     * https://dap.ozflux.org.au/thredds/catalog/ozflux/sites/catalog.html
 * Climate data:
