@@ -8,7 +8,7 @@ The `Annual_update.ipynb` notebook contains the workflow for annual updating of 
 1. Spatiotemporal harmonisation of input datasets
 2. The creation of feature datasets
 3. Gridded ensemble predictions
-4. Combining ensembles with an ensemble median and uncertainty range
+4. Combining ensembles with an ensemble median and uncertainty range, and exporting production ready datasets to THREDDS
 
 The `Historical.ipynb` notebook contains the workflow for creating historical carbon and water fluxes for Australia through the full length of the MODIS archive (i.e., 2003-2022). It has six steps:
 1. Spatiotemporal harmonisation of input datasets
@@ -21,10 +21,12 @@ The `Historical.ipynb` notebook contains the workflow for creating historical ca
 The final output of these notebooks are annual netcdf files for each carbon or water flux, for example: `AusEFlux_GPP_5km_quantiles_2003_v1.2.nc` where the naming convention is `"AusEFlux_[flux]_[spatial resolution]_quantiles_[year]_[version].nc`.  Results are stored in, for example, `'root_directory/results/AusEFlux/GPP/'`
 
 ---
-* **analysis folder**: Notebooks in this folder describe various analysis workflows like intercomparisons with other products, plotting etc.
+**`analysis` folder**: Notebooks in this folder describe various analysis workflows like intercomparisons with other products, plotting etc.
 
 ---
 **Data Sources:**
+* OzFlux eddy covariance flux tower data:
+    * https://dap.ozflux.org.au/thredds/catalog/ozflux/sites/catalog.html
 * Climate data:
     * Ozwald temperature
         * /g/data/ub8/au/OzWALD/daily/meteo/Tmin/OzWALD.Tmin.<'year'>.nc
@@ -38,5 +40,6 @@ The final output of these notebooks are annual netcdf files for each carbon or w
     * kNDVI and NDWI derived from: /g/data/ub8/au/MODIS/mosaic/MCD43A4.006/
     * LST: /g/data/ub8/au/MODIS/mosaic/MYD11A1.006/
     * NDVI: /g/data/ub8/au/OzWALD/8day/
+    * LAI: /g/data/ub8/au/OzWALD/8day/
 * Vegetation height: /g/data/ub8/LandCover/OzWALD_LC/
 * C4 grass cover percentage: https://data.csiro.au/collection/csiro:58485
