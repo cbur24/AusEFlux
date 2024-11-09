@@ -7,7 +7,7 @@ import numpy as np
 from odc.geo.xr import assign_crs
 
 import sys
-sys.path.append('/g/data/os22/chad_tmp/AusEFlux/src/')
+sys.path.append('/g/data/xc0/project/AusEFlux/src/')
 from _utils import round_coords
 
 import warnings
@@ -125,8 +125,8 @@ def _vegetation_fractions(results,
     for Australia and supplied by Dr Luigi Renzullo.
     
     """
-    ndvi_path=f'/g/data/os22/chad_tmp/AusEFlux/data/{target_grid}/NDVI_{target_grid}.nc'
-    ndvi_min_path =f'/g/data/os22/chad_tmp/AusEFlux/data/ndvi_of_baresoil_{target_grid}.nc'
+    ndvi_path=f'/g/data/xc0/project/AusEFlux/data/{target_grid}/NDVI_{target_grid}.nc'
+    ndvi_min_path =f'/g/data/xc0/project/AusEFlux/data/ndvi_of_baresoil_{target_grid}.nc'
     
     # NDVI value of bare soil (supplied by Luigi Renzullo)
     ndvi_min = xr.open_dataarray(ndvi_min_path,
@@ -239,7 +239,7 @@ def _cumulative_rainfall(rain_path,
 
 def _fractional_anomalies(results,
                           target_grid='5km',
-                          vars=[#'NDWI', 'SRAD','Tavg', 'VPD','kNDVI','LAI',
+                          vars=['NDWI', 'SRAD','Tavg', 'VPD','kNDVI','LAI',
                                 'rain', 'rain_cml3','rain_cml6', 'rain_cml12'
                                ],
                           dask_chunks=dict(latitude=1000, longitude=1000),
@@ -258,7 +258,7 @@ def _fractional_anomalies(results,
 
 def _c4_grass_fraction(results,
                        target_grid='5km',
-                       c4_path='/g/data/os22/chad_tmp/AusEFlux/data/Aust_C4_grass_cover_percentage.tif',
+                       c4_path='/g/data/xc0/project/AusEFlux/data/Aust_C4_grass_cover_percentage.tif',
                        dask_chunks=dict(x=1500, y=1500)
     
 ):
@@ -266,12 +266,12 @@ def _c4_grass_fraction(results,
     ds = assign_crs(ds, crs='epsg:4326')
 
     # Grab a common grid to reproject too
-    gbox_path = f'/g/data/os22/chad_tmp/AusEFlux/data/grid_{target_grid}'
+    gbox_path = f'/g/data/xc0/project/AusEFlux/data/grid_{target_grid}'
     with open(gbox_path, 'rb') as f:
         gbox = pickle.load(f)
 
     # Open a mask of aus extent at target resolution
-    p = f'/g/data/os22/chad_tmp/AusEFlux/data/land_sea_mask_{target_grid}.nc'
+    p = f'/g/data/xc0/project/AusEFlux/data/land_sea_mask_{target_grid}.nc'
     mask = xr.open_dataarray(p)
 
     #reproject

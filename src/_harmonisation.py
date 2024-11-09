@@ -9,14 +9,14 @@ import warnings
 warnings.simplefilter(action='ignore')
 
 import sys
-sys.path.append('/g/data/os22/chad_tmp/AusEFlux/src/')
+sys.path.append('/g/data/xc0/project/AusEFlux/src/')
 from _utils import round_coords
 
 def spatiotemporal_harmonisation(year_start,
                                  year_end,
                                  target_grid = '5km',
                                  base_path='/g/data/ub8/au/',
-                                 results_path='/g/data/os22/chad_tmp/AusEFlux/data/interim/',
+                                 results_path='/g/data/xc0/project/AusEFlux/data/interim/',
                                  verbose=False
                                 ):
     """
@@ -322,13 +322,13 @@ def _veg_height(years,
                 ):
 
     """
-    Process vegetation height data from /g/data/os22/chad_tmp/AusEFlux/data/
+    Process vegetation height data from /g/data/xc0/project/AusEFlux/data/
     This dataset is originally from g/data/ub8/LandCover/OzWALD_LC/ and 
     was reprojected from 25m to 1 km previously. It is a static dataset that
     is replicated at every time-step.
     """
                     
-    p='/g/data/os22/chad_tmp/AusEFlux/data/VegH_1km_2007_2010.nc'
+    p='/g/data/xc0/project/AusEFlux/data/VegH_1km_2007_2010.nc'
     ds = xr.open_dataset(p, chunks=dask_chunks)
     ds = assign_crs(ds, crs='epsg:4326')
     ds.attrs['nodata'] = np.nan

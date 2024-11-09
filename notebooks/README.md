@@ -23,10 +23,6 @@ The final output of these notebooks are annual netcdf files for each carbon or w
 ---
 * **analysis folder**: Notebooks in this folder describe various analysis workflows like intercomparisons with other products, plotting etc.
 
-* **annual_update folder**: Notebooks in this folder preserve the Jupyter notebooks used to develop the methods for annual updating of the product. These have been superceeded by the `Annual_update.ipynb` notebook which now runs the entire process.
-
-* **historical folder**: Notebooks in this folder preserve the Jupyter notebooks used to develop the methods for creating historical carbon and water fluxes for Australia through the full length of the MODIS archive (i.e., 2003-present). They are superceeded by the `Historical.ipynb` notebook which now runs the entire process.
-
 ---
 **Data Sources:**
 * Climate data:

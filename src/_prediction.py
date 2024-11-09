@@ -7,7 +7,7 @@ from odc.geo.xr import assign_crs
 from dask_ml.wrappers import ParallelPostFit
 
 import sys
-sys.path.append('/g/data/os22/chad_tmp/AusEFlux/src/')
+sys.path.append('/g/data/xc0/project/AusEFlux/src/')
 from _utils import round_coords
 
 

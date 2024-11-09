@@ -9,7 +9,7 @@ from odc.geo.xr import assign_crs
 import warnings
 warnings.filterwarnings("ignore")
 
-sys.path.append('/g/data/os22/chad_tmp/AusEFlux/src/')
+sys.path.append('/g/data/xc0/project/AusEFlux/src/')
 from _prediction import collect_prediction_data, predict_xr, HiddenPrints
 from _utils import round_coords
 
