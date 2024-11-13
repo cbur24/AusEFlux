@@ -16,7 +16,7 @@ warnings.simplefilter(action='ignore')
 def create_feature_datasets(base,
                             results_path,
                             exclude,
-                            target_grid='5km',
+                            target_grid='1km',
                             dask_chunks=dict(time=-1, latitude=1000, longitude=1000),
                             verbose=False
 ):

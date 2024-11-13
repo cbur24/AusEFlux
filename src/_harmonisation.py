@@ -28,7 +28,7 @@ def spatiotemporal_harmonisation(year_start,
     years = [str(i) for i in range(year_start, year_end+1)]
 
     # Grab a common grid to reproject all datasets too 
-    gbox_path = f'/g/data/os22/chad_tmp/AusEFlux/data/grid_{target_grid}'
+    gbox_path = f'/g/data/xc0/project/AusEFlux/data/grid_{target_grid}'
     with open(gbox_path, 'rb') as f:
         gbox = pickle.load(f)
 
@@ -37,7 +37,7 @@ def spatiotemporal_harmonisation(year_start,
         print('load land/sea mask')
     
     # Open a mask of aus extent as target resolution
-    p = f'/g/data/os22/chad_tmp/AusEFlux/data/land_sea_mask_{target_grid}.nc'
+    p = f'/g/data/xc0/project/AusEFlux/data/land_sea_mask_{target_grid}.nc'
     mask = xr.open_dataarray(p)
     
     #run NDWI
