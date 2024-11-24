@@ -111,9 +111,9 @@ def create_feature_datasets(base,
 
 
 def _vegetation_fractions(results,
-                          target_grid='5km',
+                          target_grid='1km',
                           ndvi_max=0.91,
-                          dask_chunks=dict(latitude=750, longitude=750, time=-1)
+                          dask_chunks=dict(latitude=1000, longitude=1000, time=-1)
 ):
     """
     Calculate per-pixel fraction of trees, grass, bare using the methods defined by
@@ -213,7 +213,7 @@ def _vegetation_fractions(results,
 
 def _cumulative_rainfall(rain_path,
                          results,
-                         target_grid='5km',
+                         target_grid='1km',
                          dask_chunks=dict(latitude=1000, longitude=1000)
 ):
     
@@ -238,7 +238,7 @@ def _cumulative_rainfall(rain_path,
     
 
 def _fractional_anomalies(results,
-                          target_grid='5km',
+                          target_grid='1km',
                           vars=['NDWI', 'SRAD','Tavg', 'VPD','kNDVI','LAI',
                                 'rain', 'rain_cml3','rain_cml6', 'rain_cml12'
                                ],
@@ -257,7 +257,7 @@ def _fractional_anomalies(results,
 
 
 def _c4_grass_fraction(results,
-                       target_grid='5km',
+                       target_grid='1km',
                        c4_path='/g/data/xc0/project/AusEFlux/data/Aust_C4_grass_cover_percentage.tif',
                        dask_chunks=dict(x=1500, y=1500)
     

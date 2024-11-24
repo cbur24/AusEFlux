@@ -14,7 +14,7 @@ from _utils import round_coords
 
 def spatiotemporal_harmonisation(year_start,
                                  year_end,
-                                 target_grid = '5km',
+                                 target_grid = '1km',
                                  base_path='/g/data/ub8/au/',
                                  results_path='/g/data/xc0/project/AusEFlux/data/interim/',
                                  verbose=False
@@ -73,7 +73,7 @@ def spatiotemporal_harmonisation(year_start,
 
     #run SILO climate grids
     if verbose:
-        print('Process SILO Climate, estimated time 5 seconds/year/variable')
+        print('Process SILO Climate, estimated time 1 min/year/variable')
     
     # update the list of years to run by adding an extra year at the start. This is
     # because later we will calculate cumulative rainfall and the first year of the
@@ -142,7 +142,7 @@ def _modis_indices(years,
             ds = np.tanh(((d['SR_B2'] - d['SR_B1']) / (d['SR_B2'] + d['SR_B1'])) ** 2)
         
         #resample time
-        ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).mean().persist()
+        ds = ds.resample(time='MS', offset=pd.Timedelta(14, 'd')).mean().persist()
     
         # resample spatial
         ds = ds.odc.reproject(geobox, resampling='average').compute()  # bring into memory
@@ -203,7 +203,7 @@ def _ozwald_indices(years,
             ds.attrs['nodata'] = np.nan
             
             #resample time
-            ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).mean().persist()
+            ds = ds.resample(time='MS', offset=pd.Timedelta(14, 'd')).mean().persist()
         
             # resample spatial
             ds = ds.odc.reproject(geobox, resampling='average').compute()
@@ -283,7 +283,7 @@ def _modis_LST(years,
             ds.attrs['nodata'] = np.nan
             
              #resample time
-            ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).mean().persist()
+            ds = ds.resample(time='MS', offset=pd.Timedelta(14, 'd')).mean().persist()
         
              # resample spatial
             if round(geobox.resolution.x, 3) == 0.01:
@@ -316,7 +316,7 @@ def _veg_height(years,
                 results,
                 geobox,
                 mask,
-                target_grid='5km',
+                target_grid='1km',
                 dask_chunks=dict(latitude=250, longitude=250),
                 verbose=False
                 ):
@@ -374,7 +374,7 @@ def _ozwald_climate(years,
                 results,
                 geobox,
                 mask,
-                target_grid='5km',
+                target_grid='1km',
                 dask_chunks=dict(latitude=5000, longitude=5000, time=1),
                 verbose=False
                    ):
@@ -410,7 +410,7 @@ def _ozwald_climate(years,
             ds.attrs['nodata'] = np.nan
             
             #resample time
-            ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).mean().persist()
+            ds = ds.resample(time='MS', offset=pd.Timedelta(14, 'd')).mean().persist()
             
             #we need to spatial resample first to reduce RAM/speed up.
             if k=='kTavg':
@@ -418,12 +418,12 @@ def _ozwald_climate(years,
                 ds = ds.odc.reproject(geobox, resampling='nearest').compute()
                 ds = round_coords(ds)
             else:
-                # downsacling from 500m to target grid
-                ds = ds.odc.reproject(geobox, resampling='average').compute()
+                # downscaling to target grid
+                ds = ds.odc.reproject(geobox, resampling='bilinear').compute()
                 ds = round_coords(ds)
 
             #resample time
-            ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).mean()
+            ds = ds.resample(time='MS', offset=pd.Timedelta(14, 'd')).mean()
 
             #tidy up
             ds = ds.transpose('time', 'latitude', 'longitude')
@@ -483,7 +483,7 @@ def _SILO_climate(years,
                 results,
                 geobox,
                 mask,
-                target_grid='5km',
+                target_grid='1km',
                 dask_chunks=dict(lat=250, lon=250, time=-1),
                 verbose=False
                    ):
@@ -520,12 +520,12 @@ def _SILO_climate(years,
         
                 # resample time and space
                 if k=='rain':
-                    ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).sum()
+                    ds = ds.resample(time='MS', offset=pd.Timedelta(14, 'd')).sum()
                 else:
-                    ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).mean()
+                    ds = ds.resample(time='MS', offset=pd.Timedelta(14, 'd')).mean()
                 
                 if k in ['SRAD', 'VPD']:
-                    if target_grid=='1km':
+                    if target_grid!='5km':
                         method='bilinear'
                     else:
                         method='nearest'
