@@ -85,25 +85,38 @@ def create_feature_datasets(base,
 
     #---step 2 Create new features--------------------
     #veg fraction
-    if verbose:
-        print('Vegetation fractions')
-    _vegetation_fractions(results=results_path, target_grid=target_grid)
+    
+    if os.path.exists(f'{results_path}trees_{target_grid}.nc'):
+        if verbose:
+            print(' ', 'veg fraction exist, skipping')
+    else:
+        if verbose:
+            print('Vegetation fractions')
+        _vegetation_fractions(results=results_path, target_grid=target_grid)
+
+    if os.path.exists(f'{results_path}rain_cml3_{target_grid}.nc'):
+        if verbose:
+            print(' ', 'Cumulative rainfall exist, skipping')
+    else:
+        if verbose:
+            print('Cumulative rainfall')
+        _cumulative_rainfall(f'{results_path}rain_{target_grid}_extrayear.nc', target_grid=target_grid, results=results_path)
     
     if verbose:
-        print('Cumulative rainfall')
-    _cumulative_rainfall(f'{results_path}rain_{target_grid}_extrayear.nc', target_grid=target_grid, results=results_path)
-    
-    if verbose:
-        print('Fractional anomalies')
+            print('Fractional anomalies')
     _fractional_anomalies(results=results_path,  target_grid=target_grid, verbose=verbose)
 
-    if verbose:
-        print('LST minus Tair')
-    tair = xr.open_dataarray(f'{results_path}Tavg_{target_grid}.nc')
-    lst = xr.open_dataarray(f'{results_path}LST_{target_grid}.nc')
-    deltaT = lst - tair
-    deltaT.name = u'ΔT'
-    deltaT.to_netcdf(results_path+u'ΔT_'+target_grid+'.nc')
+    if os.path.exists(results_path+ u'ΔT_'+target_grid+'.nc'):
+        if verbose:
+            print(' ', 'LST minus Tair exist, skipping')
+    else:
+        if verbose:
+            print('LST minus Tair')
+        tair = xr.open_dataarray(f'{results_path}Tavg_{target_grid}.nc')
+        lst = xr.open_dataarray(f'{results_path}LST_{target_grid}.nc')
+        deltaT = lst - tair
+        deltaT.name = u'ΔT'
+        deltaT.to_netcdf(results_path+u'ΔT_'+target_grid+'.nc')
 
     if verbose:
         print('C4 grass fraction')
@@ -113,7 +126,7 @@ def create_feature_datasets(base,
 def _vegetation_fractions(results,
                           target_grid='1km',
                           ndvi_max=0.91,
-                          dask_chunks=dict(latitude=1000, longitude=1000, time=-1)
+                          dask_chunks=dict(latitude=1500, longitude=1500, time=-1)
 ):
     """
     Calculate per-pixel fraction of trees, grass, bare using the methods defined by
@@ -129,10 +142,13 @@ def _vegetation_fractions(results,
     ndvi_min_path =f'/g/data/xc0/project/AusEFlux/data/ndvi_of_baresoil_{target_grid}.nc'
     
     # NDVI value of bare soil (supplied by Luigi Renzullo)
-    ndvi_min = xr.open_dataarray(ndvi_min_path,
+    ndvi_min = xr.open_dataset(ndvi_min_path,
                                 chunks=dict(latitude=dask_chunks['latitude'],
                                 longitude=dask_chunks['longitude'])
-                                )
+                                )['NDVI']
+
+    ndvi_min.name = 'NDVI'
+    
     #ndvi data is here
     ds = xr.open_dataarray(ndvi_path, chunks=dask_chunks)
 
@@ -214,7 +230,7 @@ def _vegetation_fractions(results,
 def _cumulative_rainfall(rain_path,
                          results,
                          target_grid='1km',
-                         dask_chunks=dict(latitude=1000, longitude=1000)
+                         dask_chunks=dict(latitude=1500, longitude=1500)
 ):
     
     rain = xr.open_dataarray(rain_path,chunks=dask_chunks)
@@ -242,18 +258,23 @@ def _fractional_anomalies(results,
                           vars=['NDWI', 'SRAD','Tavg', 'VPD','kNDVI','LAI',
                                 'rain', 'rain_cml3','rain_cml6', 'rain_cml12'
                                ],
-                          dask_chunks=dict(latitude=1000, longitude=1000),
+                          dask_chunks=dict(latitude=1500, longitude=1500),
                           verbose=True
 ):
-    
+
     for v in vars:
-        if verbose:
-            print(' ', v)
-        ds = assign_crs(xr.open_dataset(f'{results}{v}_{target_grid}.nc',chunks=dask_chunks), crs='EPSG:4326')
-        mean = ds.groupby("time.month").mean("time")
-        frac = ds.groupby("time.month") / mean
-        frac = frac.drop('month').rename({v:v+'_anom'}).sel(time=slice('2003','2052'))
-        frac.to_netcdf(f'{results}{v}_anom_{target_grid}.nc')
+        if os.path.exists(f'{results}{v}_anom_{target_grid}.nc'):
+            print('', f'{v}_anom exist, skipping')
+            continue
+        
+        else:
+            if verbose:
+                print(' ', v)
+            ds = assign_crs(xr.open_dataset(f'{results}{v}_{target_grid}.nc',chunks=dask_chunks), crs='EPSG:4326')
+            mean = ds.groupby("time.month").mean("time")
+            frac = ds.groupby("time.month") / mean
+            frac = frac.compute().drop('month').rename({v:v+'_anom'}).sel(time=slice('2003','2052'))
+            frac.to_netcdf(f'{results}{v}_anom_{target_grid}.nc')
 
 
 def _c4_grass_fraction(results,

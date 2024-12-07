@@ -9,6 +9,7 @@ warnings.filterwarnings("ignore")
 
 sys.path.append('/g/data/xc0/project/AusEFlux/src/')
 from _percentile import xr_quantile
+# from odc.algo import xr_quantile
 
 def combine_ensemble(model_var,
                      results_path,
@@ -18,7 +19,7 @@ def combine_ensemble(model_var,
                      attrs,
                      target_grid='1km',
                      quantiles=[0.25,0.5,0.75],
-                     dask_chunks=dict(x=1000, y=1000, time=1),
+                     dask_chunks=dict(x=250, y=250, time=-1),
                      verbose=True
 ):
     """
@@ -49,6 +50,7 @@ def combine_ensemble(model_var,
     #find median and uncertainty envelope
     if verbose:
         print(f'Compute quantiles: {quantiles}')
+    
     ds = xr_quantile(ds, quantiles=quantiles, nodata=np.nan)
     ds = ds.rename({'band':model_var+'_quantiles'}).to_array().squeeze().drop('variable')
     ds.attrs['nodata']=np.nan
@@ -66,44 +68,46 @@ def combine_ensemble(model_var,
     ds = assign_crs(ds, crs='EPSG:4326')
     ds.attrs = attrs
 
-    #list of years and export
+    # #list of years and export
     years = [str(i) for i in range(year_start, year_end+1)]
     version=attrs['version']
 
     for year in years:
 
         xx = ds.sel(time=year)
+
+        xx.to_netcdf(f'{results_path}AusEFlux_{model_var}_{target_grid}_quantiles_{year}_{version}.nc')
         
-        #annual summaries, need to remask after sum()
-        xx_mean = xx.resample(time='YE').mean()
-        xx_sum = xx.resample(time='YE').sum()
+        # #annual summaries, need to remask after sum()
+        # xx_mean = xx.resample(time='YE').mean()
+        # xx_sum = xx.resample(time='YE').sum()
     
-        mask = ~np.isnan(xx_mean[var+'_median'])
-        xx_sum = xx_sum.where(mask).astype(np.float32)
+        # mask = ~np.isnan(xx_mean[var+'_median'])
+        # xx_sum = xx_sum.where(mask).astype(np.float32)
     
-        #update units for annual sums
-        if var =='ET':
-            units = 'mm/year'
-        else:
-            units = 'gC/m\N{SUPERSCRIPT TWO}/year'
+        # #update units for annual sums
+        # if var =='ET':
+        #     units = 'mm/year'
+        # else:
+        #     units = 'gC/m\N{SUPERSCRIPT TWO}/year'
         
-        xx_sum.attrs['units'] = units
+        # xx_sum.attrs['units'] = units
         
-        # hack to make time dim work with OpenDAP which doesn't like datetime64
-        start_time = xx.time.values[0].astype('datetime64[D]')###first date
-        # set time as the duration between actual and first date
-        coords_time = np.array(xx.time, dtype='datetime64[D]') - np.array(xx.time, dtype='datetime64[D]')[0]        
-        xx['time'] = coords_time.astype('int32')
-        xx.time.attrs = {'units': f'days since {start_time}'} #make sure attrs explain int32 time
+        # # hack to make time dim work with OpenDAP which doesn't like datetime64
+        # start_time = xx.time.values[0].astype('datetime64[D]')###first date
+        # # set time as the duration between actual and first date
+        # coords_time = np.array(xx.time, dtype='datetime64[D]') - np.array(xx.time, dtype='datetime64[D]')[0]        
+        # xx['time'] = coords_time.astype('int32')
+        # xx.time.attrs = {'units': f'days since {start_time}'} #make sure attrs explain int32 time
     
-        annual_time = xx_mean.time.values[0].astype('datetime64[D]')
-        xx_mean['time'] = np.array([0], dtype='timedelta64[D]').astype('int32') #zero days since 'annual_time'
-        xx_sum['time'] = np.array([0], dtype='timedelta64[D]').astype('int32') #zero days since 'annual_time'
-        xx_mean.time.attrs = {'units': f'days since {annual_time}'}
-        xx_sum.time.attrs = {'units': f'days since {annual_time}'}
+        # annual_time = xx_mean.time.values[0].astype('datetime64[D]')
+        # xx_mean['time'] = np.array([0], dtype='timedelta64[D]').astype('int32') #zero days since 'annual_time'
+        # xx_sum['time'] = np.array([0], dtype='timedelta64[D]').astype('int32') #zero days since 'annual_time'
+        # xx_mean.time.attrs = {'units': f'days since {annual_time}'}
+        # xx_sum.time.attrs = {'units': f'days since {annual_time}'}
         
-        xx.to_netcdf(f'{results_path}/monthly/{model_var}/AusEFlux_{model_var}_1km_quantiles_{year}_{version}.nc')
-        xx_mean.to_netcdf(f'{results_path}/annual/AnnualMean/{model_var}/AusEFlux_{model_var}_1km_AnnualMean_{year}_{version}.nc')
-        xx_sum.to_netcdf(f'{results_path}/annual/AnnualSum/{model_var}/AusEFlux_{model_var}_1km_AnnualSum_{year}_{version}.nc')
+        # xx.to_netcdf(f'{results_path}/monthly/{model_var}/AusEFlux_{model_var}_1km_quantiles_{year}_{version}.nc')
+        # xx_mean.to_netcdf(f'{results_path}/annual/AnnualMean/{model_var}/AusEFlux_{model_var}_1km_AnnualMean_{year}_{version}.nc')
+        # xx_sum.to_netcdf(f'{results_path}/annual/AnnualSum/{model_var}/AusEFlux_{model_var}_1km_AnnualSum_{year}_{version}.nc')
 
    

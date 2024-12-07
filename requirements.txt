@@ -12,7 +12,7 @@ graphviz
 flox
 
 # geospatial
-xarray[complete]
+xarray[complete]==2024.10.0
 rioxarray
 pandas
 geopandas

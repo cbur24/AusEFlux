@@ -142,7 +142,8 @@ def _modis_indices(years,
             ds = np.tanh(((d['SR_B2'] - d['SR_B1']) / (d['SR_B2'] + d['SR_B1'])) ** 2)
         
         #resample time
-        ds = ds.resample(time='MS', offset=pd.Timedelta(14, 'd')).mean().persist()
+        ds = ds.resample(time='MS').mean().persist()
+        ds['time'] = ds['time'] + pd.Timedelta(14, 'd') #Make time the middle of the month
     
         # resample spatial
         ds = ds.odc.reproject(geobox, resampling='average').compute()  # bring into memory
@@ -203,7 +204,8 @@ def _ozwald_indices(years,
             ds.attrs['nodata'] = np.nan
             
             #resample time
-            ds = ds.resample(time='MS', offset=pd.Timedelta(14, 'd')).mean().persist()
+            ds = ds.resample(time='MS').mean().persist()
+            ds['time'] = ds['time'] + pd.Timedelta(14, 'd') #Make time the middle of the month
         
             # resample spatial
             ds = ds.odc.reproject(geobox, resampling='average').compute()
@@ -283,7 +285,8 @@ def _modis_LST(years,
             ds.attrs['nodata'] = np.nan
             
              #resample time
-            ds = ds.resample(time='MS', offset=pd.Timedelta(14, 'd')).mean().persist()
+            ds = ds.resample(time='MS').mean().persist()
+            ds['time'] = ds['time'] + pd.Timedelta(14, 'd') #Make time the middle of the month
         
              # resample spatial
             if round(geobox.resolution.x, 3) == 0.01:
@@ -410,9 +413,10 @@ def _ozwald_climate(years,
             ds.attrs['nodata'] = np.nan
             
             #resample time
-            ds = ds.resample(time='MS', offset=pd.Timedelta(14, 'd')).mean().persist()
+            ds = ds.resample(time='MS').mean().persist()
+            ds['time'] = ds['time'] + pd.Timedelta(14, 'd') #Make time the middle of the month
             
-            #we need to spatial resample first to reduce RAM/speed up.
+            # resample spatial
             if k=='kTavg':
                 #upscaling from 10km to target grid
                 ds = ds.odc.reproject(geobox, resampling='nearest').compute()
@@ -421,9 +425,6 @@ def _ozwald_climate(years,
                 # downscaling to target grid
                 ds = ds.odc.reproject(geobox, resampling='bilinear').compute()
                 ds = round_coords(ds)
-
-            #resample time
-            ds = ds.resample(time='MS', offset=pd.Timedelta(14, 'd')).mean()
 
             #tidy up
             ds = ds.transpose('time', 'latitude', 'longitude')
@@ -460,9 +461,6 @@ def _ozwald_climate(years,
         #calculate tavg
         ds = d['Tmin'] + d['kTavg']*(d['Tmax'] - d['Tmin'])
     
-        # #resample time
-        # ds = ds.resample(time='MS', loffset=pd.Timedelta(14, 'd')).mean()
-        
         #tidy up
         ds.attrs['nodata'] = np.nan
         ds = ds.rename(var)
@@ -520,9 +518,11 @@ def _SILO_climate(years,
         
                 # resample time and space
                 if k=='rain':
-                    ds = ds.resample(time='MS', offset=pd.Timedelta(14, 'd')).sum()
+                    ds = ds.resample(time='MS').sum()
+                    ds['time'] = ds['time'] + pd.Timedelta(14, 'd') #Make time the middle of the month
                 else:
-                    ds = ds.resample(time='MS', offset=pd.Timedelta(14, 'd')).mean()
+                    ds = ds.resample(time='MS').mean()
+                    ds['time'] = ds['time'] + pd.Timedelta(14, 'd')
                 
                 if k in ['SRAD', 'VPD']:
                     if target_grid!='5km':

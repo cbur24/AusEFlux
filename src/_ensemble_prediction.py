@@ -31,88 +31,91 @@ def predict_ensemble(base,
     a path to a model. 
   
     """
-    
-    ## open data for prediction
-    data = collect_prediction_data(data_path=f'{prediction_data}/{target_grid}/',
-                                 time_range=(f'{year_start}',f'{year_end}'),
-                                 verbose=False,
-                                 export=False,
-                                 chunks=dask_chunks
-                                 )
-    if compute_early:
-        data = data.compute()
+    #model name
+    name = model_path.split('/')[-1].split('.')[0]
 
-    # nodata masks and urban+water masks
-    if verbose:
-        print('Creating no-data mask')
-    mask = data[['kNDVI','VegH','SRAD']].to_array().isnull().any('variable').compute()
-    urban = xr.open_dataset(f'{base}data/urban_water_mask_{target_grid}.nc')['urban_water_mask']
-
-    # Index by variables and check variable order
-    train_vars = list(pd.read_csv(features_list))[0:-1]
-    train_vars.remove('site')
-    train_vars=[i[:-3] for i in train_vars]
-    
-    try:
-        data = data[train_vars]
-        if verbose:
-            print('Variables match, n:', len(data.data_vars))
-    except:
-        raise ValueError("Variables don't match")
-
-    # Predict
-    # Loop through models
-    name = m.split('/')[-1].split('.')[0]
-    
+    #check if its already been  predicted
     if os.path.exists(f'{results_path}{name}.nc'):
         if verbose:
-            print('skipping model '+name)
-        continue
-    
-    if verbose:
-        print('Model: ', name)
+            print('skipping model '+name+' prediction')
+        
+        return None
 
-    #open model
-    warnings.filterwarnings("ignore")
-    model = load(model_path).set_params(n_jobs=1)
+    else:
+        ## open data for prediction
+        data = collect_prediction_data(data_path=f'{prediction_data}/',
+                                     time_range=(f'{year_start}',f'{year_end}'),
+                                     verbose=False,
+                                     export=False,
+                                     chunks=dask_chunks
+                                     )
+        if compute_early:
+            data = data.compute()
     
-    results = []
-    i=0
-    #loop through the time-steps
-    for i in range(0, len(data.time)): 
+        # nodata masks and urban+water masks
         if verbose:
-            print("  {:03}/{:03}\r".format(i + 1, len(range(0, len(data.time)))), end="")
-
-        with HiddenPrints():
-            warnings.filterwarnings("ignore")
-            predicted = predict_xr(model,
-                                data.isel(time=i),
-                                proba=False,
-                                clean=True,
-                                chunk_size=875000, #this number is optimized to maximise pred speed at 1km.
-                                  ).compute()
-
-            #mask no-data areas
-            predicted = predicted.Predictions.where(~mask.isel(time=i))
+            print('Creating no-data mask')
+        mask = data[['LAI_anom','VegH','NDWI', 'rain_anom', 'Tavg']].to_array().isnull().any('variable').compute()
+        urban = xr.open_dataset(f'{base}data/urban_water_mask_{target_grid}.nc')['urban_water_mask']
+        urban = urban.rename({'latitude':'y', 'longitude':'x'})
+    
+        # Index by variables and check variable order
+        train_vars = list(pd.read_csv(features_list))[0:-1]
+        train_vars.remove('site')
+        train_vars=[i[:-3] for i in train_vars]
         
-            #add back time dim
-            predicted['time'] = data.isel(time=i).time.values
+        try:
+            data = data[train_vars]
+            if verbose:
+                print('Variables match, n:', len(data.data_vars))
+        except:
+            raise ValueError("Variables don't match")
+    
+        # Predict
+        if verbose:
+            print('Model: ', name)
+    
+        #open model
+        warnings.filterwarnings("ignore")
+        model = load(model_path).set_params(n_jobs=1)
         
-            #append to list
-            results.append(predicted.astype('float32'))
-            i+=1 
-
-    #join together into a Dataset
-    ds = xr.concat(results, dim='time').sortby('time').rename(model_var).astype('float32')
+        results = []
+        i=0
+        #loop through the time-steps
+        for i in range(0, len(data.time)): 
+            if verbose:
+                print("  {:03}/{:03}\r".format(i + 1, len(range(0, len(data.time)))), end="")
     
-    #mask urban and water areas
-    ds = ds.where(urban!=1).astype('float32')
+            with HiddenPrints():
+                warnings.filterwarnings("ignore")
+                predicted = predict_xr(model,
+                                    data.isel(time=i),
+                                    proba=False,
+                                    clean=True,
+                                    chunk_size=1000000, #this number is optimized to maximise pred speed at 1km 875000
+                                      ).compute()
     
-    if not os.path.exists(results_path):
-        os.makedirs(results_path)
+                #mask no-data areas
+                predicted = predicted.Predictions.where(~mask.isel(time=i))
+            
+                #add back time dim
+                predicted['time'] = data.isel(time=i).time.values
+            
+                #append to list
+                results.append(predicted.astype('float32'))
+                i+=1 
     
-    #save results
-    ds.to_netcdf(f'{results_path}{name}.nc')
+        #join together into a Dataset
+        ds = xr.concat(results, dim='time').sortby('time').rename(model_var).astype('float32')
+        
+        #mask urban and water areas
+        ds = ds.where(urban!=1).astype('float32')
+        
+        if not os.path.exists(results_path):
+            os.makedirs(results_path)
+        
+        #save results
+        ds.to_netcdf(f'{results_path}{name}.nc')
 
 
 
