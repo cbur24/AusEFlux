@@ -3,7 +3,7 @@
 
 # AusEFlux: Empirical upscaling of terrestrial carbon and water fluxes over Australia using the OzFlux eddy covariance network
 
-AusEFlux (**Aus**tralian **E**mpirical **Flux**es) is a high resolution (1 km) _operational_ gridded estimate of Gross Primary Productivity, Ecosystem Respiration, Net Ecosystem Exchange, and Evapo-transpiration over the Australian continent for the period January 2003 to present.  This new estimate of Australia’s terrestrial carbon cycle provides a benchmark for assessment against Land Surface Model simulations, and a means for monitoring of Australia’s terrestrial carbon cycle at an unprecedented high-resolution.
+AusEFlux (**Aus**tralian **E**mpirical **Flux**es) is a high resolution (500 metre) _operational_ gridded estimate of Gross Primary Productivity, Ecosystem Respiration, Net Ecosystem Exchange, and Evapo-transpiration over the Australian continent for the period January 2003 to present.  This new estimate of Australia’s terrestrial carbon cycle provides a benchmark for assessment against Land Surface Model simulations, and a means for monitoring of Australia’s terrestrial carbon cycle at an unprecedented high-resolution.
 
 **The datasets are free and openly available through the NCI's high-performance THREDDS data service:** https://thredds.nci.org.au/thredds/catalog/ub8/au/AusEFlux/catalog.html
 

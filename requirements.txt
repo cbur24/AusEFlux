@@ -12,6 +12,7 @@ graphviz
 flox
 
 # geospatial
+numpy==1.26.4 #last release before 2.0
 xarray[complete]==2024.10.0
 rioxarray
 pandas

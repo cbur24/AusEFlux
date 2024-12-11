@@ -55,7 +55,7 @@ def predict_ensemble(base,
         # nodata masks and urban+water masks
         if verbose:
             print('Creating no-data mask')
-        mask = data[['LAI_anom','VegH','NDWI', 'rain_anom', 'Tavg']].to_array().isnull().any('variable').compute()
+        mask = data[['LAI_anom', 'VegH','NDWI', 'rain_anom', 'Tavg']].to_array().isnull().any('variable').compute()
         urban = xr.open_dataset(f'{base}data/urban_water_mask_{target_grid}.nc')['urban_water_mask']
         urban = urban.rename({'latitude':'y', 'longitude':'x'})
     
@@ -110,11 +110,11 @@ def predict_ensemble(base,
         
         #mask urban and water areas
         ds = ds.where(urban!=1).astype('float32')
-        
+
+        #save results
         if not os.path.exists(results_path):
             os.makedirs(results_path)
         
-        #save results
         ds.to_netcdf(f'{results_path}{name}.nc')
 
 
