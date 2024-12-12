@@ -17,7 +17,7 @@ def combine_ensemble(model_var,
                      year_start,
                      year_end,
                      attrs,
-                     target_grid='1km',
+                     target_grid='500m',
                      quantiles=[0.25,0.5,0.75],
                      dask_chunks=dict(x=250, y=250, time=-1),
                      verbose=True

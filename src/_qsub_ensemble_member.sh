@@ -2,9 +2,9 @@
  
 #PBS -P er8
 #PBS -q normalsr
-#PBS -l ncpus=65
-#PBS -l mem=350gb
-#PBS -l walltime=07:00:00
+#PBS -l ncpus=52
+#PBS -l mem=240gb
+#PBS -l walltime=01:30:00
 #PBS -l jobfs=1500MB
 #PBS -l storage=gdata/os22+gdata/xc0+scratch/xc0
  
