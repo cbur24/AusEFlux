@@ -8,7 +8,7 @@ AusEFlux (**Aus**tralian **E**mpirical **Flux**es) is a high resolution (500 met
 **The datasets are free and openly available through the NCI's high-performance THREDDS data service:** https://thredds.nci.org.au/thredds/catalog/ub8/au/AusEFlux/catalog.html
 
 * The `notebooks/` folder contains all the methods and instructions for running the workflow.
-* The `src/` foder contains the python scripts for supporting the workflows. 
+* The `src/` folder contains the python scripts for supporting the workflows. 
 
 The methods in this repository develop an **operational workflow for production of AusEFlux**. This repository differs from the [NEE_modelling](https://github.com/cbur24/NEE_modelling) repo which describes the research methods that inform the [EGU Biogeosciences publication](https://doi.org/10.5194/bg-20-4109-2023).
 
