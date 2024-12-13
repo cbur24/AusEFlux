@@ -18,10 +18,11 @@ The `Historical.ipynb` notebook contains the workflow for creating historical ca
 5. Gridded ensemble predictions
 6. Combining ensembles with an ensemble median and uncertainty range
 
-The final output of these notebooks are annual netcdf files for each carbon or water flux, for example: `AusEFlux_GPP_5km_quantiles_2003_v1.2.nc` where the naming convention is `"AusEFlux_[flux]_[spatial resolution]_quantiles_[year]_[version].nc`.  Results are stored in, for example, `'root_directory/results/AusEFlux/GPP/'`
+The final output of these notebooks are annual netcdf files for each carbon or water flux, for example: `AusEFlux_GPP_500m_quantiles_2003_v2.0.nc` where the naming convention is `"AusEFlux_[flux]_[spatial resolution]_quantiles_[year]_[version].nc`.  Results are stored in, for example, `'root_directory/results/AusEFlux/GPP/'`
 
-***
-**`analysis` folder**: Notebooks in this folder describe various analysis workflows like intercomparisons with other products, plotting etc.
+Lastly, the `Move_auseflux_to_production.ipynb` notebook takes the flux netcdfs output from `Annual_update` and `Historical` and moves them into the production folder on /`g/data/ub8` where they are accessible through OpenDAP to the public.
+
+The `analysis` folder**: Notebooks in this folder describe various analysis workflows like intercomparisons with other products, plotting etc.
 
 ***
 
