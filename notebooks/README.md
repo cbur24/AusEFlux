@@ -22,7 +22,7 @@ The final output of these notebooks are annual netcdf files for each carbon or w
 
 Lastly, the `Move_auseflux_to_production.ipynb` notebook takes the flux netcdfs output from `Annual_update` and `Historical` and moves them into the production folder on /`g/data/ub8` where they are accessible through OpenDAP to the public.
 
-The `analysis` folder**: Notebooks in this folder describe various analysis workflows like intercomparisons with other products, plotting etc.
+The `analysis` folder: Notebooks in this folder describe various analysis workflows like intercomparisons with other products, plotting etc.
 
 ***
 
