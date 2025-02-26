@@ -78,36 +78,3 @@ def combine_ensemble(model_var,
 
         xx.to_netcdf(f'{results_path}AusEFlux_{model_var}_{target_grid}_quantiles_{year}_{version}.nc')
         
-        # #annual summaries, need to remask after sum()
-        # xx_mean = xx.resample(time='YE').mean()
-        # xx_sum = xx.resample(time='YE').sum()
-    
-        # mask = ~np.isnan(xx_mean[var+'_median'])
-        # xx_sum = xx_sum.where(mask).astype(np.float32)
-    
-        # #update units for annual sums
-        # if var =='ET':
-        #     units = 'mm/year'
-        # else:
-        #     units = 'gC/m\N{SUPERSCRIPT TWO}/year'
-        
-        # xx_sum.attrs['units'] = units
-        
-        # # hack to make time dim work with OpenDAP which doesn't like datetime64
-        # start_time = xx.time.values[0].astype('datetime64[D]')###first date
-        # # set time as the duration between actual and first date
-        # coords_time = np.array(xx.time, dtype='datetime64[D]') - np.array(xx.time, dtype='datetime64[D]')[0]        
-        # xx['time'] = coords_time.astype('int32')
-        # xx.time.attrs = {'units': f'days since {start_time}'} #make sure attrs explain int32 time
-    
-        # annual_time = xx_mean.time.values[0].astype('datetime64[D]')
-        # xx_mean['time'] = np.array([0], dtype='timedelta64[D]').astype('int32') #zero days since 'annual_time'
-        # xx_sum['time'] = np.array([0], dtype='timedelta64[D]').astype('int32') #zero days since 'annual_time'
-        # xx_mean.time.attrs = {'units': f'days since {annual_time}'}
-        # xx_sum.time.attrs = {'units': f'days since {annual_time}'}
-        
-        # xx.to_netcdf(f'{results_path}/monthly/{model_var}/AusEFlux_{model_var}_1km_quantiles_{year}_{version}.nc')
-        # xx_mean.to_netcdf(f'{results_path}/annual/AnnualMean/{model_var}/AusEFlux_{model_var}_1km_AnnualMean_{year}_{version}.nc')
-        # xx_sum.to_netcdf(f'{results_path}/annual/AnnualSum/{model_var}/AusEFlux_{model_var}_1km_AnnualSum_{year}_{version}.nc')
-
-   

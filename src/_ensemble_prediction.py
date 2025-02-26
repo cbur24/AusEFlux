@@ -13,8 +13,7 @@ sys.path.append('/g/data/xc0/project/AusEFlux/src/')
 from _prediction import collect_prediction_data, predict_xr, HiddenPrints
 from _utils import round_coords
 
-def predict_ensemble(base,
-                     prediction_data,
+def predict_ensemble(prediction_data,
                      model_path,
                      model_var,
                      results_path,
@@ -22,6 +21,8 @@ def predict_ensemble(base,
                      year_start,
                      year_end,
                      target_grid='500m',
+                     masking_vars=['LAI_anom', 'VegH','NDWI', 'rain_anom', 'Tavg'],
+                     # masking_vars=['VegH','NDVI', 'rain_anom', 'tavg'],
                      dask_chunks=dict(time=1),
                      compute_early=True,
                      verbose=True
@@ -55,8 +56,8 @@ def predict_ensemble(base,
         # nodata masks and urban+water masks
         if verbose:
             print('Creating no-data mask')
-        mask = data[['LAI_anom', 'VegH','NDWI', 'rain_anom', 'Tavg']].to_array().isnull().any('variable').compute()
-        urban = xr.open_dataset(f'{base}data/urban_water_mask_{target_grid}.nc')['urban_water_mask']
+        mask = data[masking_vars].to_array().isnull().any('variable').compute()
+        urban = xr.open_dataset(f'/g/data/xc0/project/AusEFlux/data/urban_water_mask_{target_grid}.nc')['urban_water_mask']
         urban = urban.rename({'latitude':'y', 'longitude':'x'})
     
         # Index by variables and check variable order

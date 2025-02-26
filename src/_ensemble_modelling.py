@@ -118,7 +118,7 @@ def ensemble_models(
                     'min_child_samples':stats.randint(10,30),
                     'boosting_type': ['gbdt', 'dart'],
                     'max_depth': stats.randint(5,25),
-                    'n_estimators': [300, 400, 500, 600],
+                    'n_estimators': [300, 400, 500],
                 }
             
             else:
@@ -136,7 +136,7 @@ def ensemble_models(
             # results are saved as a .csv 
             j=1
             for train_index, test_index in zip(train, test):
-                print(f"    {j}/{len(train)} outer cv split")
+                print(f"    {j}/{len(train)} outer cv split", end='\r')
                 
                 #simple random split on inner fold
                 inner_cv = KFold(n_splits=3,
@@ -273,8 +273,8 @@ def validation_plots(
     z = gaussian_kde(xy)(xy)
     
     sb.scatterplot(data=cross_df, x='Test',y='Pred',c=z, s=50, lw=1, alpha=0.3, ax=ax)
-    sb.regplot(data=cross_df, x='Test',y='Pred', scatter=False, color='darkblue', ax=ax)
-    sb.regplot(data=cross_df, x='Test',y='Test', color='black', scatter=False, line_kws={'linestyle':'dashed'}, ax=ax);
+    sb.regplot(data=cross_df, x='Test',y='Pred', scatter=False, color='darkblue', ax=ax, ci=False)
+    sb.regplot(data=cross_df, x='Test',y='Test', color='black', scatter=False, line_kws={'linestyle':'dashed'}, ax=ax, ci=False);
     
     if model_var !='ET':
         units = ' gC/m\N{SUPERSCRIPT TWO}/month'
@@ -290,6 +290,9 @@ def validation_plots(
                 transform=ax.transAxes, fontsize=font)
     ax.tick_params(axis='x', labelsize=font)
     ax.tick_params(axis='y', labelsize=font)
+    if model_var == 'GPP':
+        ax.set_ylim(-10,450)
+        ax.set_xlim(-10,450)
     
     plt.tight_layout()
     fig.savefig(f'{base}results/cross_val/ensemble/{model_var}/cross_val_{model_var}_ensemble.png',

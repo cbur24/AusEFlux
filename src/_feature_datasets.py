@@ -56,7 +56,7 @@ def create_feature_datasets(base,
         if f in ['NDWI', 'kNDVI']:
             
             # seperate into climatologies and anomalies
-            ds_monthly = ds.groupby('time.month').mean()
+            ds_monthly = ds.sel(time=slice('2003','2022')).groupby('time.month').mean()
             ds_anom = ds.groupby('time.month') - ds_monthly  
             
             # fill linearly by max 2 steps
@@ -64,7 +64,7 @@ def create_feature_datasets(base,
             
             #recombine anomalies and climatology
             ds = ds_anom.groupby('time.month') + ds_monthly
-            ds = ds.drop('month')
+            ds = ds.drop_vars('month')
             
             #fill remaining gaps with climatology
             ds = ds.groupby("time.month").fillna(ds_monthly)
@@ -72,10 +72,10 @@ def create_feature_datasets(base,
         # ensure no gaps in other datasets (there shouldn't be any)
         # this is just to be cautious
         else:
-            ds_monthly = ds.groupby('time.month').mean()
+            ds_monthly = ds.sel(time=slice('2003','2022')).groupby('time.month').mean()
             ds = ds.groupby("time.month").fillna(ds_monthly)
         
-        ds = ds.drop('month').compute()
+        ds = ds.drop_vars('month').compute()
 
         #ensure every dataset goes from 2003 onwards
         if f=='rain':
@@ -260,9 +260,9 @@ def _fractional_anomalies(results,
         if verbose:
             print(' ', v)
         ds = assign_crs(xr.open_dataset(f'{results}{v}_{target_grid}.nc',chunks=dask_chunks), crs='EPSG:4326')
-        mean = ds.groupby("time.month").mean("time")
+        mean = ds.sel(time=slice('2003','2022')).groupby("time.month").mean("time")
         frac = ds.groupby("time.month") / mean
-        frac = frac.compute().drop('month').rename({v:v+'_anom'}).sel(time=slice('2003','2052'))
+        frac = frac.compute().drop_vars('month').rename({v:v+'_anom'}).sel(time=slice('2003','2052'))
         frac.to_netcdf(f'{results}{v}_anom_{target_grid}.nc')
 
 
@@ -272,7 +272,7 @@ def _c4_grass_fraction(results,
                        dask_chunks=dict(x=1500, y=1500)
     
 ):
-    ds = rxr.open_rasterio(c4_path,chunks=dask_chunks).squeeze().drop('band')
+    ds = rxr.open_rasterio(c4_path,chunks=dask_chunks).squeeze().drop_vars('band')
     ds = assign_crs(ds, crs='epsg:4326')
 
     # Grab a common grid to reproject too
@@ -280,9 +280,9 @@ def _c4_grass_fraction(results,
     with open(gbox_path, 'rb') as f:
         gbox = pickle.load(f)
 
-    # Open a mask of aus extent at target resolution
+    # Open a mask of aus extent as target resolution
     p = f'/g/data/xc0/project/AusEFlux/data/land_sea_mask_{target_grid}.nc'
-    mask = xr.open_dataarray(p)
+    mask = xr.open_dataset(p)[f'landsea_mask_{target_grid}']
 
     #reproject
     ds = ds.where(ds>=0).odc.reproject(gbox, resampling='average').compute()

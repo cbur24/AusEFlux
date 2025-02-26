@@ -38,42 +38,42 @@ def spatiotemporal_harmonisation(year_start,
     
     # Open a mask of aus extent as target resolution
     p = f'/g/data/xc0/project/AusEFlux/data/land_sea_mask_{target_grid}.nc'
-    mask = xr.open_dataarray(p)
+    mask = xr.open_dataset(p)[f'landsea_mask_{target_grid}']
     
     #run NDWI
     if verbose:
-        print('Process NDWI, estimated time 10 mins/year')
+        print('Process NDWI')
     _modis_indices(years, 'NDWI', base_path, results_path, gbox, mask,target_grid=target_grid, verbose=verbose)
 
     #run kNDVI
     if verbose:
-        print('Process kNDVI, estimated time 10 mins/year')
+        print('Process kNDVI')
     _modis_indices(years, 'kNDVI', base_path, results_path, gbox, mask, target_grid=target_grid,verbose=verbose)
 
     #run NDVI & LAI
     if verbose:
-        print('Process NDVI & LAI, estimated time 1 min/year')
+        print('Process NDVI & LAI')
     _ozwald_indices(years, 'NDVI', base_path, results_path, gbox, mask, target_grid=target_grid, verbose=verbose)
     _ozwald_indices(years, 'LAI', base_path, results_path, gbox, mask, target_grid=target_grid, verbose=verbose)
 
     #run LST
     if verbose:
-        print('Process LST, estimated time 5 mins/year')
+        print('Process LST')
     _modis_LST(years, 'LST', base_path, results_path, gbox, mask, target_grid=target_grid, verbose=verbose)
 
     #run VegH
     if verbose:
-        print('Process Veg Height, estimated time 1 mins/year')
+        print('Process Veg Height')
     _veg_height(years, 'VegH', base_path, results_path, gbox, mask, target_grid=target_grid,verbose=verbose)
     
     #run temperature-average from ozwald
     if verbose:
-        print('Process Tavg, estimated time 80 mins/year')
+        print('Process Tavg')
     _ozwald_climate(years, 'Tavg', base_path, results_path, gbox, mask, target_grid=target_grid, verbose=verbose)
 
     #run SILO climate grids
     if verbose:
-        print('Process SILO Climate, estimated time 1 min/year/variable')
+        print('Process SILO Climate')
     
     # update the list of years to run by adding an extra year at the start. This is
     # because later we will calculate cumulative rainfall and the first year of the
@@ -99,7 +99,7 @@ def _modis_indices(years,
     resample to monthly means
 
     The orginal Gao (1996) paper says to use the 1230_1250nm band (band 5 in MODIS),
-    but other sources suggest band 6. Sticking with Gao for now.
+    but other sources suggest band 6. Sticking with Gao.
     
     """
     for year in years:

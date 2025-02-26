@@ -108,7 +108,10 @@ def extract_ozflux(version='2023_v2',
             if not os.path.exists(save_ec_data):
                 os.makedirs(save_ec_data)
             
-            del flux.attrs['_NCProperties'] #delete 'reserved' property name
+            try:
+                del flux.attrs['_NCProperties'] #delete 'reserved' property name
+            except Exception:
+                pass
             flux.to_netcdf(f'{save_ec_data}{sites_names[i][0:-13]}_{version}_{level}.nc')
         
         # Set negative GPP, ER, and ET measurements as zero

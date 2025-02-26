@@ -16,7 +16,6 @@ import numpy as np
 import geopandas as gpd
 import rasterio.features
 
-
 __all__ = (
     "start_local_dask",
     "pmap",
