@@ -18,7 +18,7 @@ The methods in this repository develop an **operational workflow for production 
 
 ***
 
-Coarser resolution outputs of this analysis, stored as netcdfs, can be accessed at [Zenodo](https://zenodo.org/records/14942139). 
+Coarser resolution outputs of this analysis, stored as netcdfs, can be accessed at [Zenodo](https://zenodo.org/records/15449020). 
 
 If using these methods or datasets please cite:
 
