@@ -14,7 +14,7 @@ The methods in this repository develop an **operational workflow for production 
 
 **Version Guide**
 * _v1.1:_ This version of the datasets are those used to inform the EGU Publication linked above. Its time range is 2003-July 2022, and its spatial resolution is 5 km on Zenodo, but the 1 km resolution datasets can be accessed through [NCI's THREDDS portal](https://thredds.nci.org.au/thredds/catalog/ub8/au/AusEFlux/v1/catalog.html).
-* _v2.1:_ This is the operational version of the dataset, its includes several improvements over version 1.1. Its time-range is 2003-2024 (and will be updated annually), and its spatial resolution is 500m.  A 5 km reprojected version of the dataset is included on [Zenodo]((https://zenodo.org/records/14942139)), but the 500 metre datasets can be accessed through [NCI's THREDDS portal](https://thredds.nci.org.au/thredds/catalog/ub8/au/AusEFlux/v2/catalog.html).
+* _v2.1:_ This is the operational version of the dataset, its includes several improvements over version 1.1. Its time-range is 2003-2025 (and will be updated annually), and its spatial resolution is 500m.  A 5 km reprojected version of the dataset is included on [Zenodo]((https://zenodo.org/records/14942139)), but the 500 metre datasets can be accessed through [NCI's THREDDS portal](https://thredds.nci.org.au/thredds/catalog/ub8/au/AusEFlux/v2/catalog.html).
 
 ***
 
