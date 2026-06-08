@@ -1,0 +1,16 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Raw byte streams from extract_continental.py (intermediate, regenerable)
+*.raw
+
+# Generated diagnostic plots (regenerable via level4_report.py --plots)
+report_plots/

@@ -1,0 +1,13 @@
+# Claude Code local config
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# uv environment (benchmark tooling)
+benchmark/.venv/
+
+# Regenerable benchmark artifacts
+benchmark/report_plots/
+*.raw
