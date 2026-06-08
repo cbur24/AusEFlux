@@ -23,14 +23,21 @@ Step 1 – Spatiotemporal Harmonisation
 Step 2 – Feature Dataset Construction
       │
       ▼
-Step 3 – Ensemble Prediction  ──or──  Step 3 (Quantile) – Direct Quantile Prediction
-      │                                       │
-      ▼                                       │
-Step 4 – Ensemble Combination                 │
-      │                                       │
-      ▼                                       ▼
+Step 3 – Ensemble Prediction + Combination   ──or──   Step 3 (Quantile) – Direct Quantile Prediction
+   (predict 30 members & take 25/50/75                      (3 quantile models predict the
+    percentiles in one fused pass)                           bands directly)
+      │                                                          │
+      ▼                                                          ▼
 AusEFlux_{flux}_500m_quantiles_{year}_v2.1.nc
 ```
+
+> **Note on "Step 4".** Earlier versions split prediction (Step 3) and ensemble
+> combination (Step 4) into two passes — Step 3 wrote one NetCDF per model, then Step 4
+> read them back to compute the percentiles. These are now **fused into a single pass**
+> inside `step3_ensemble_prediction.py` (function `_predict_and_combine`): features for
+> each tile are read once, all members predict, and the 25/50/75 percentiles are written
+> straight to the final product — no per-model intermediate files. So there is no separate
+> Step 4 script; "Step 4" is the combination block in Step 3.
 
 ### Step 1 – Spatiotemporal Harmonisation
 
@@ -48,20 +55,20 @@ Concatenates per-year interim files into multi-year feature datasets. Applies ga
 uv run step2_feature_datasets.py
 ```
 
-### Step 3 – Ensemble Prediction
+### Step 3 – Ensemble Prediction + Combination (fused)
 
-Applies each pre-trained LightGBM ensemble model to the feature data for the target year, writing one prediction file per model per flux. Processes data in latitude bands to bound memory.
+Applies every pre-trained ensemble member (LightGBM + RandomForest) to the feature data for the target year **and** combines them into the final product in a single pass. For each (time, latitude-band) tile the features are read once, all members predict, and the 25th/50th/75th percentiles across the ensemble are computed per pixel (requiring ≥3 valid members) and written directly to the output — no per-model intermediate files. Processing is tiled by latitude to bound memory.
+
+This combination step is what earlier versions called **"Step 4 – Ensemble Combination"**; it is implemented in the `_predict_and_combine` function of `step3_ensemble_prediction.py` (the `np.nanquantile([0.25, 0.50, 0.75])` block), not a separate script. Optionally, LightGBM members compiled with `benchmark/compile_models.py` are used automatically for a faster, exact predict.
 
 ```
 uv run step3_ensemble_prediction.py --year 2024
 uv run step3_ensemble_prediction.py --year 2024 --fluxes GPP ET
 ```
 
-This is followed by **Step 4 – Ensemble Combination**, which stacks all per-model predictions and computes the 25th, 50th, and 75th percentile across the ensemble for each pixel and time step. Both steps are handled by the same script.
-
 ### Step 3 (Quantile) – Direct Quantile Prediction
 
-An alternative to the standard Step 3 + Step 4 pipeline. Instead of running ~30 ensemble models and computing empirical quantiles afterward, this script uses 3 quantile-regression LightGBM models (alpha = 0.25, 0.50, 0.75) that predict the percentile bands directly in a single pass.
+An alternative to the standard ensemble prediction + combination above. Instead of running ~30 ensemble models and combining their empirical quantiles, this script uses 3 quantile-regression LightGBM models (alpha = 0.25, 0.50, 0.75) that predict the percentile bands directly in a single pass.
 
 ```
 uv run step3_ensemble_prediction_quantile.py --year 2024 --mode predict
