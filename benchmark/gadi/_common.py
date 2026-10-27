@@ -643,6 +643,21 @@ class CoarseMean:
 # netCDF writer (layout of step3_ensemble_prediction.py products)
 # ---------------------------------------------------------------------------
 
+SPATIAL_REF_ATTRS = {
+    'spatial_ref': 'GEOGCRS["WGS 84",ENSEMBLE["World Geodetic System 1984 ensemble",MEMBER["World Geodetic System 1984 (Transit)"],MEMBER["World Geodetic System 1984 (G730)"],MEMBER["World Geodetic System 1984 (G873)"],MEMBER["World Geodetic System 1984 (G1150)"],MEMBER["World Geodetic System 1984 (G1674)"],MEMBER["World Geodetic System 1984 (G1762)"],MEMBER["World Geodetic System 1984 (G2139)"],MEMBER["World Geodetic System 1984 (G2296)"],ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]],ENSEMBLEACCURACY[2.0]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],USAGE[SCOPE["Horizontal component of 3D system."],AREA["World."],BBOX[-90,-180,90,180]],ID["EPSG",4326]]',
+    'crs_wkt': 'GEOGCRS["WGS 84",ENSEMBLE["World Geodetic System 1984 ensemble",MEMBER["World Geodetic System 1984 (Transit)"],MEMBER["World Geodetic System 1984 (G730)"],MEMBER["World Geodetic System 1984 (G873)"],MEMBER["World Geodetic System 1984 (G1150)"],MEMBER["World Geodetic System 1984 (G1674)"],MEMBER["World Geodetic System 1984 (G1762)"],MEMBER["World Geodetic System 1984 (G2139)"],MEMBER["World Geodetic System 1984 (G2296)"],ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]],ENSEMBLEACCURACY[2.0]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],USAGE[SCOPE["Horizontal component of 3D system."],AREA["World."],BBOX[-90,-180,90,180]],ID["EPSG",4326]]',
+    'semi_major_axis': 6378137.0,
+    'semi_minor_axis': 6356752.31424518,
+    'inverse_flattening': 298.257223563,
+    'reference_ellipsoid_name': 'WGS 84',
+    'longitude_of_prime_meridian': 0.0,
+    'prime_meridian_name': 'Greenwich',
+    'geographic_crs_name': 'WGS 84',
+    'horizontal_datum_name': 'World Geodetic System 1984 ensemble',
+    'grid_mapping_name': 'latitude_longitude',
+}
+
+
 def product_attrs(flux, version='v2.1', extra=None):
     meta = FLUX_METADATA.get(flux, {'long_name': flux, 'units': ''})
     attrs = {
@@ -650,7 +665,7 @@ def product_attrs(flux, version='v2.1', extra=None):
         'long_name': meta['long_name'], 'units': meta['units'],
         'version': version,
         'description': (
-            f'AusEFlux {meta["long_name"]} is created by empirically upscaling '
+            f'AusEFlux {flux} is created by empirically upscaling '
             'the OzFlux eddy covariance network using machine learning methods '
             'coupled with climate and remote sensing datasets. The estimates '
             'provided within this dataset were extracted from an ensemble of '
@@ -665,8 +680,8 @@ def create_nc(path, var_names, lat, lon, times, attrs=None, var_attrs=None,
               chunk=(1, 200, 200)):
     """
     Create a NETCDF4 file with dims (time, latitude, longitude); `lat`/`lon`
-    keep their dtype; `times` are datetime-likes written as days since
-    1970-01-01.  Returns the open netCDF4.Dataset (caller closes).
+    keep their dtype; `times` are datetime-likes written as int days since
+    15 January of their year.  Returns the open netCDF4.Dataset (caller closes).
     """
     import netCDF4 as nc4
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
@@ -674,20 +689,28 @@ def create_nc(path, var_names, lat, lon, times, attrs=None, var_attrs=None,
     ds.createDimension('time', len(times))
     ds.createDimension('latitude', len(lat))
     ds.createDimension('longitude', len(lon))
-    tv = ds.createVariable('time', 'f8', ('time',))
-    tv.units = 'days since 1970-01-01'
-    tv.calendar = 'proleptic_gregorian'
-    epoch = pd.Timestamp('1970-01-01')
-    tv[:] = np.array([(pd.Timestamp(t) - epoch) / pd.Timedelta(days=1)
-                      for t in times], dtype='float64')
+    # Layout of the published v2.1 products (see step3 `_nc_full`): int time
+    # in days since 15 January of the year, float32 coordinates, `spatial_ref`
+    # CRS variable + `grid_mapping`, global `nodata = NaN`.
+    tv = ds.createVariable('time', 'i4', ('time',))
+    tv.units = f'days since {pd.Timestamp(times[0]).year}-01-15'
+    epoch = pd.Timestamp(tv.units[len('days since '):])
+    days = [(pd.Timestamp(t) - epoch) for t in times]
+    if any(d != pd.Timedelta(days=d.days) for d in days):
+        raise ValueError('time steps must fall on whole days')
+    tv[:] = np.array([d.days for d in days], dtype='int32')
     lat = np.asarray(lat)
     lon = np.asarray(lon)
-    lv = ds.createVariable('latitude', lat.dtype.str.lstrip('<>='), ('latitude',))
-    lv.units = 'degrees_north'
+    lv = ds.createVariable('latitude', lat.dtype.str.lstrip('<>='), ('latitude',),
+                           fill_value=lat.dtype.type(np.nan))
     lv[:] = lat
-    xv = ds.createVariable('longitude', lon.dtype.str.lstrip('<>='), ('longitude',))
-    xv.units = 'degrees_east'
+    xv = ds.createVariable('longitude', lon.dtype.str.lstrip('<>='), ('longitude',),
+                           fill_value=lon.dtype.type(np.nan))
     xv[:] = lon
+    sr = ds.createVariable('spatial_ref', 'i4')
+    for k, val in SPATIAL_REF_ATTRS.items():
+        sr.setncattr(k, val)
+    sr.assignValue(0)
     for vn in var_names:
         v = ds.createVariable(vn, 'f4', ('time', 'latitude', 'longitude'),
                               fill_value=np.float32(np.nan), zlib=True,
@@ -695,11 +718,13 @@ def create_nc(path, var_names, lat, lon, times, attrs=None, var_attrs=None,
                               chunksizes=(chunk[0], min(chunk[1], len(lat)),
                                           min(chunk[2], len(lon))))
         for k, val in (var_attrs or {}).get(vn, {}).items():
-            if k in ('_FillValue',) or (isinstance(val, float) and np.isnan(val)):
+            if k in ('_FillValue', 'grid_mapping') or (isinstance(val, float) and np.isnan(val)):
                 continue
             v.setncattr(k, val)
+        v.grid_mapping = 'spatial_ref'
+    ds.setncattr('nodata', np.float64(np.nan))
     for k, val in (attrs or {}).items():
-        if isinstance(val, float) and np.isnan(val):
+        if k == 'nodata' or (isinstance(val, float) and np.isnan(val)):
             continue
         if isinstance(val, (np.ndarray, list, tuple)) and len(val) == 0:
             continue

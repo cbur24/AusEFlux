@@ -54,6 +54,7 @@ import argparse
 import gc
 import glob
 import os
+import re
 import resource
 import sys
 import time
@@ -444,10 +445,48 @@ def _feature_grid(features_path, ref_var, year_str, lat_rows, verbose=False):
 # ---------------------------------------------------------------------------
 # NetCDF4 output writer
 # ---------------------------------------------------------------------------
+# CRS variable of the published v2.1 products (odc-geo `assign_crs` on
+# EPSG:4326): an int scalar `spatial_ref` with the WKT2 string, referenced by
+# `grid_mapping` on every data variable.
+SPATIAL_REF_ATTRS = {
+    'spatial_ref': 'GEOGCRS["WGS 84",ENSEMBLE["World Geodetic System 1984 ensemble",MEMBER["World Geodetic System 1984 (Transit)"],MEMBER["World Geodetic System 1984 (G730)"],MEMBER["World Geodetic System 1984 (G873)"],MEMBER["World Geodetic System 1984 (G1150)"],MEMBER["World Geodetic System 1984 (G1674)"],MEMBER["World Geodetic System 1984 (G1762)"],MEMBER["World Geodetic System 1984 (G2139)"],MEMBER["World Geodetic System 1984 (G2296)"],ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]],ENSEMBLEACCURACY[2.0]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],USAGE[SCOPE["Horizontal component of 3D system."],AREA["World."],BBOX[-90,-180,90,180]],ID["EPSG",4326]]',
+    'crs_wkt': 'GEOGCRS["WGS 84",ENSEMBLE["World Geodetic System 1984 ensemble",MEMBER["World Geodetic System 1984 (Transit)"],MEMBER["World Geodetic System 1984 (G730)"],MEMBER["World Geodetic System 1984 (G873)"],MEMBER["World Geodetic System 1984 (G1150)"],MEMBER["World Geodetic System 1984 (G1674)"],MEMBER["World Geodetic System 1984 (G1762)"],MEMBER["World Geodetic System 1984 (G2139)"],MEMBER["World Geodetic System 1984 (G2296)"],ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]],ENSEMBLEACCURACY[2.0]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],USAGE[SCOPE["Horizontal component of 3D system."],AREA["World."],BBOX[-90,-180,90,180]],ID["EPSG",4326]]',
+    'semi_major_axis': 6378137.0,
+    'semi_minor_axis': 6356752.31424518,
+    'inverse_flattening': 298.257223563,
+    'reference_ellipsoid_name': 'WGS 84',
+    'longitude_of_prime_meridian': 0.0,
+    'prime_meridian_name': 'Greenwich',
+    'geographic_crs_name': 'WGS 84',
+    'horizontal_datum_name': 'World Geodetic System 1984 ensemble',
+    'grid_mapping_name': 'latitude_longitude',
+}
+GRID_MAPPING_VAR = 'spatial_ref'
+
+
+def _time_units(times):
+    """`days since YYYY-01-15` for the year of the first time step: the
+    encoding of the published products (xarray's default, int days)."""
+    return f'days since {pd.Timestamp(times[0]).year}-01-15'
+
+
+def _decode_time(var, i=0):
+    """Timestamp of time step *i* from a netCDF time variable's units."""
+    m = re.match(r'days since (\d{4}-\d{2}-\d{2})', str(getattr(var, 'units', '')))
+    if not m:
+        raise ValueError(f'unsupported time units {getattr(var, "units", None)!r}')
+    return pd.Timestamp(m.group(1)) + pd.Timedelta(days=float(np.asarray(var[:])[i]))
+
 
 @contextmanager
 def _nc_full(path, var_names, lat, lon, times, attrs=None):
-    """Create output NetCDF with multiple variables sharing the same grid."""
+    """Create output NetCDF with multiple variables sharing the same grid.
+
+    Layout of the published v2.1 products: int `time` in days since
+    15 January of the year, float32 latitude/longitude, a `spatial_ref`
+    CRS variable referenced by `grid_mapping`, global `nodata = NaN`; the
+    data variables are additionally chunked (1, 200, 200) and deflated.
+    """
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     ds = nc4.Dataset(path, 'w', format='NETCDF4')
     try:
@@ -455,31 +494,40 @@ def _nc_full(path, var_names, lat, lon, times, attrs=None):
         ds.createDimension('latitude', len(lat))
         ds.createDimension('longitude', len(lon))
 
-        tv = ds.createVariable('time', 'f8', ('time',))
-        tv.units    = 'days since 1970-01-01'
-        tv.calendar = 'proleptic_gregorian'
-        epoch = pd.Timestamp('1970-01-01')
+        tv = ds.createVariable('time', 'i4', ('time',))
+        tv.units = _time_units(times)
+        epoch = pd.Timestamp(tv.units[len('days since '):])
         for i, t in enumerate(times):
-            tv[i] = float((pd.Timestamp(t) - epoch).days)
+            delta = pd.Timestamp(t) - epoch
+            if delta != pd.Timedelta(days=delta.days):
+                raise ValueError(f'time step {t} is not a whole day from {epoch}')
+            tv[i] = int(delta.days)
 
-        lv = ds.createVariable('latitude', 'f4', ('latitude',))
-        lv.units = 'degrees_north'
+        lv = ds.createVariable('latitude', 'f4', ('latitude',),
+                               fill_value=np.float32(np.nan))
         lv[:] = lat
 
-        xv = ds.createVariable('longitude', 'f4', ('longitude',))
-        xv.units = 'degrees_east'
+        xv = ds.createVariable('longitude', 'f4', ('longitude',),
+                               fill_value=np.float32(np.nan))
         xv[:] = lon
 
-        for vn in var_names:
-            ds.createVariable(vn, 'f4', ('time', 'latitude', 'longitude'),
-                              fill_value=np.float32(np.nan), zlib=True,
-                              complevel=4,
-                              chunksizes=(1, min(200, len(lat)),
-                                          min(200, len(lon))))
+        sr = ds.createVariable(GRID_MAPPING_VAR, 'i4')
+        for k, v in SPATIAL_REF_ATTRS.items():
+            sr.setncattr(k, v)
+        sr.assignValue(0)
 
+        for vn in var_names:
+            v = ds.createVariable(vn, 'f4', ('time', 'latitude', 'longitude'),
+                                  fill_value=np.float32(np.nan), zlib=True,
+                                  complevel=4,
+                                  chunksizes=(1, min(200, len(lat)),
+                                              min(200, len(lon))))
+            v.grid_mapping = GRID_MAPPING_VAR
+
+        ds.setncattr('nodata', np.float64(np.nan))
         if attrs:
             for k, v in attrs.items():
-                if isinstance(v, float) and np.isnan(v):
+                if k == 'nodata' or (isinstance(v, float) and np.isnan(v)):
                     continue
                 ds.setncattr(k, v)
 
@@ -514,7 +562,6 @@ def _merge_parts(final_file, month_parts, year, lat_rows=None, verbose=False):
         print('  ERROR: no month part files to merge')
         return False
 
-    epoch = pd.Timestamp('1970-01-01')
     timestamps, lat, lon, var_names, attrs = [], None, None, None, None
     cfg0, p0 = None, None
     for m, p in month_parts:
@@ -524,7 +571,7 @@ def _merge_parts(final_file, month_parts, year, lat_rows=None, verbose=False):
             if tvals.size != 1:
                 print(f'  ERROR: {p} has {tvals.size} time steps (expected 1)')
                 return False
-            ts = epoch + pd.Timedelta(days=float(tvals[0]))
+            ts = _decode_time(src['time'])
             if ts.year != int(year) or ts.month != m:
                 print(f'  ERROR: {p} holds {ts:%Y-%m}, expected {year}-{m:02d}')
                 return False
@@ -542,7 +589,8 @@ def _merge_parts(final_file, month_parts, year, lat_rows=None, verbose=False):
             plat = np.asarray(src['latitude'][:])
             plon = np.asarray(src['longitude'][:])
             pvars = [v for v in src.variables
-                     if v not in ('time', 'latitude', 'longitude')]
+                     if v not in ('time', 'latitude', 'longitude',
+                                  GRID_MAPPING_VAR, 'crs')]
             if lat is None:
                 lat, lon, var_names = plat, plon, pvars
                 attrs = {k: src.getncattr(k) for k in src.ncattrs()}
@@ -807,7 +855,7 @@ def _predict_flux_quantile(flux, year, models_folder, features_path,
 
     meta = FLUX_METADATA[flux]
     description = (
-        f'AusEFlux {meta["long_name"]} is created by empirically upscaling '
+        f'AusEFlux {flux} is created by empirically upscaling '
         'the OzFlux eddy covariance network using quantile regression '
         'LightGBM models coupled with climate and remote sensing datasets. '
         'The estimates represent the 25th, 50th, and 75th percentiles from '

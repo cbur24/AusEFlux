@@ -11,3 +11,10 @@ benchmark/.venv/
 # Regenerable benchmark artifacts
 benchmark/report_plots/
 *.raw
+
+# smoke harness outputs
+benchmark/smoke/*/out*/
+benchmark/smoke/*/root*/
+benchmark/smoke/*/dumps/
+benchmark/smoke/*/data*/
+benchmark/smoke/*/*.log

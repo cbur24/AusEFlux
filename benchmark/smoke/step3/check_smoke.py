@@ -13,7 +13,8 @@ def load(path, names):
     with nc4.Dataset(path) as d:
         d.set_auto_mask(False)
         return {n: np.asarray(d[n][:]) for n in names + ['time', 'latitude', 'longitude']}, \
-               {k: d.getncattr(k) for k in d.ncattrs()}
+               {k: d.getncattr(k) for k in d.ncattrs()
+                if not (k == 'nodata' and np.isnan(float(d.getncattr(k))))}  # NaN != NaN
 
 def same(a, b):  # bit-identical incl. NaN positions and dtype
     return a.dtype == b.dtype and a.shape == b.shape and np.array_equal(

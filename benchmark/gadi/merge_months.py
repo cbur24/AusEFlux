@@ -11,7 +11,7 @@ PARTS_DIR (or PARTS_DIR/{flux}/parts, PARTS_DIR/parts), checks that every
 expected month (default 1-12) is present exactly once with the right year,
 that all parts share the grid (bit-identical coordinates) and variables, then
 streams the data (latitude chunks) into OUT with the product layout
-(float32, NaN fill, zlib, time as days since 1970-01-01; global and variable
+(float32, NaN fill, zlib, int time as days since 15 January of the year, `spatial_ref` CRS variable; global and variable
 attributes copied from the first part).  The written file is re-read and
 verified bit-for-bit (including NaN masks) against the parts; exit status 1 on
 any problem.
