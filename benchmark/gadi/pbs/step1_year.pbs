@@ -1,0 +1,27 @@
+#!/bin/bash
+#PBS -N ausef_step1
+#PBS -P ea89
+#PBS -q normal
+#PBS -l ncpus=12,mem=48GB,walltime=06:00:00
+#PBS -l storage=gdata/xc0+gdata/ub8+scratch/ub8
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/ub8/pl5189/auseflux/logs/
+#
+# Step 1 (harmonisation) for one year, optionally a subset of variable groups.
+#   qsub -v YEAR=2024 step1_year.pbs
+#   qsub -v YEAR=2025,VARS=LST:NDVI,EXTRA="--lst_qc ref" step1_year.pbs
+# VARS: ':' or '+' separated (commas cannot pass through qsub -v).
+# Output: $AUSEFLUX_ROOT/interim_500m/{var}/{var}_500m_{year}.nc unless
+# EXTRA/ARGS_FILE gives --results_path.
+WORK=${WORK:-/scratch/ub8/pl5189/auseflux}
+CODE=${CODE:-$WORK/code/AusEFlux}
+source "$CODE/benchmark/gadi/pbs/_job_common.sh"
+source "$WORK/envs/activate_step12.sh"
+: "${YEAR:?usage: qsub -v YEAR=2024[,VARS=a:b][,EXTRA=...] step1_year.pbs}"
+job_header
+args=(--year "$YEAR" --threads "$NCPUS")
+[[ -n "${VARS:-}" ]] && args+=(--vars "$(commas "$VARS")")
+set +e
+run_timed python "$CODE/step1_harmonisation.py" "${args[@]}" "${EXTRA_ARGS[@]}"
+job_end $?

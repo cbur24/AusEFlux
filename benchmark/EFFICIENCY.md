@@ -1,5 +1,13 @@
 # AusEFlux Efficiency Benchmarks — equivalent results with less compute
 
+> **Update 2026-10-27.** The bbox measurements below (8-core workstation, 2020) are kept
+> as measured. The Gadi measurements at continental scale are in
+> [§ Gadi measurements](#gadi-measurements-2026-10-27) at the end, and change two
+> conclusions: ensemble subsampling (N = 20 "effectively equivalent") **fails** the
+> continental tolerance, and the quantile-distillation path does **not** reproduce the
+> ensemble within the per-pixel tolerance. All bbox equivalence numbers were measured
+> against a baseline that used linear quantiles; the current default is nearest-rank.
+
 Measured variants of the ensemble prediction step, each scored on **speed** *and*
 **equivalence to the current 30-model ensemble** (the "must-match" target). All
 numbers are **GPP, bbox 2020** (640×640 px, 12 months), same machine (8 cores),
@@ -101,3 +109,67 @@ uv run compile_models.py --models-folder .../results/models/ensemble/v2.1/GPP
 # Benchmark prototypes (subsampling / per-variant timing):
 uv run step3_fused.py --flux GPP --year 2020 --n-models 20 --out-subdir AusEFlux_fused_N20
 ```
+
+---
+
+## Gadi measurements (2026-10-27)
+
+Measured on NCI Gadi (`normal` queue, 2 SU per core-hour) during the validation
+experiments; full ledger in [`GADI_REPORT.md`](GADI_REPORT.md). step3 numbers are for
+GPP 2025 month 6 on two 400-row windows (rows 2800:3200 and 5000:5400) unless stated.
+"Exact" means `max|Δ| = 0` and identical NaN masks against the reference configuration.
+
+### step3: what pays
+
+| Optimisation | Effect | Exact? |
+|---|---|---|
+| `--valid_only` (predict only valid, non-urban pixels) | predicts 47.9 % of rows; predict 1385 s → 775 s per continental month (**1.8×**, 24 cpus) | yes |
+| tl2cgen-compiled LightGBM (`benchmark/compile_models.py`) | LightGBM half 320 s → 173 s per continental month (**1.85×**); 1.4 to 2× in the windows | yes, including the 2 dart members per flux |
+| nearest-rank quantiles vs `np.nanquantile` | 0.9 s vs 185 s on a window (≈ 10 s vs ≈ 30 min per continental month, **≈ 200×**); `np.nanquantile` is a per-pixel Python loop in numpy 1.26 | nearest is the reference method; linear is biased |
+| `normalsr` queue instead of `normal` | about +20 % throughput per SU (LightGBM members) | yes |
+
+Thread scaling (predict, LightGBM + RandomForest, centre window; every configuration
+gave a bit-identical product):
+
+| threads | 1 | 4 | 8 | 12 | 24 | 48 |
+|---|---|---|---|---|---|---|
+| speedup | 1.0 | 4.2 | 6.9 | 10.6 | 16.9 | 21.9 |
+| parallel efficiency | 1.0 | ≈ 1.0 | 0.86 | 0.88 | 0.70 | 0.45 |
+
+RandomForest gains nothing beyond 24 threads. The lowest SU per product is at 4 threads.
+
+### step3: what does not pay
+
+| Option | Result |
+|---|---|
+| RandomForest via ONNX (float32) | inexact (≈ 6e-5, split thresholds rounded) and not faster |
+| RandomForest via treelite GTIL | exact but 4 to 9× slower than scikit-learn |
+| RandomForest via hummingbird | about 100× slower and wrong |
+| Member subsampling (first N of 30, from the reference member files, E1) | N = 20: R² 0.994, RMSE 7 % of std; N = 10: R² 0.984. Both **fail** the tolerance, and the first-N mix is LightGBM-heavy (biased). Rejected. |
+| Quantile distillation (E7, L2 loss on nearest-rank targets, 500 trees × 31 leaves, 3 M samples) | 21 SU per flux-year (8× cheaper). Continental 2025: GPP annual within 0.02 %, monthly within 0.3 %, but per-pixel RMSE 6.4 % (GPP) and 12 % (NEE) of std, above the 5 % threshold. Larger models (3000 × 255) reach 5.0 to 5.6 % but cost ≈ 220 SU per flux-year, more than the ensemble. Not a reproduction. |
+
+### Cost per stage (new vs reference)
+
+| Stage | Reference (2025 run) | New (measured) |
+|---|---|---|
+| step1, per year | ≈ 3.5 h (dask cluster, hugemem/normalsr) | **21 min wall, ≈ 13 SU** sharded by variable group (climate + SILO 21 min on 12 cpus, 8.4 SU; NDWI + kNDVI 10 min, 2.6 SU; NDVI + LAI 0.9 SU; LST 1.5 SU; VegH 0.1 SU). RSS < 4 GB. Bound by the 13 to 15 GB OzWALD daily files; effective CPU use 1.2 to 2.1 cores, so 4 to 6 cpus per job would suffice. |
+| step2, annual update | ≈ 6.5 h wall for the full 2003 to 2025 stacks | `--years_out 2024-2025`, 8 cpus: 0.29 to 0.56 h per 400-row window, so ≈ 5 to 9.5 h and ≈ 80 to 150 SU continental (extrapolated). I/O-bound (145 to 490 % CPU of 800 %). Output ≈ 45 GB + 15 GB climatologies instead of 1.7 TB. |
+| step3, per flux-year (30 members) | 30 jobs × ≤ 1 h × 26 cpus ≈ **1,560 SU upper bound**, plus ≈ 17 min combine per flux | 24 threads, `--valid_only`: ≈ 150 SU (6 to 9 core-hours per month, RandomForest 55 to 60 % of predict, RSS ≈ 11 GB). **4 threads + compiled LightGBM: ≈ 60 to 80 SU** (extrapolated from windows, ±30 %). |
+
+The step2 read-path fix mattered more than any compute option: opening the contiguous
+interim files with `chunks={}` made every latitude tile re-read whole 2.7 GB files
+(68 s per tile); chunking by tile brings it to 0.55 s. `--bottleneck` makes rolling
+windows about 8× faster but the stage is I/O-bound, and both `--bottleneck` and `--flox`
+move results away from the reference, so they stay off.
+
+### Production recipe (step3)
+
+```
+--threads 4  (PBS: ncpus=4, mem=16GB)   3 months per job (≈ 3 h)
+compiled LightGBM members (compile_models.py once per flux)
+--quantile_method nearest --valid_only   (defaults)
+normalsr queue if available
+```
+
+≈ 60 to 80 SU per flux-year, against ≈ 1,560 SU for the reference's job layout (an
+upper bound: 30 jobs × 26 cores × 1 h walltime). See `gadi/README.md` for the commands.

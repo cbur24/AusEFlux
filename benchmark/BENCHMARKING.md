@@ -9,6 +9,19 @@ All statistics below are over the **SE-Australia test tile** (600×600 px @ 500 
 148.00–151.00°E, 33.00–36.00°S), **target year 2020**, unless stated otherwise. The
 continental 2025 results (§7) are appended when that run completes.
 
+> **Superseded by the Gadi experiments (2026-10-27).** The statistics below remain
+> valid for what they measured (the pipeline with its previous defaults: linear
+> quantiles, mask without `LAI_anom`, anomaly guard, clipped bare fraction), but some
+> conclusions changed. Current results: [`GADI_REPORT.md`](GADI_REPORT.md); Gadi
+> methodology and tools: [`gadi/README.md`](gadi/README.md).
+>
+> | Section | What changed |
+> |---|---|
+> | §5 "inherent reimplementation residual", §8 "Residual after fixes (~3 %, inherent, not bugs)" | **Not inherent.** The Gadi ablations attribute it to semantic deviations, chiefly the quantile method and the no-data mask. Recombining the 30 reference member files with nearest-rank is bit-identical to the published product (E1), and the new step3 with nearest-rank, the reference mask (incl. `LAI_anom`) and the NaN-only mask test reproduces the published 2025 product bit-for-bit from the reference features (E2a). The rasterio vs odc difference is at float-noise level for 11 of 13 interim variables (E4). |
+> | §8 item 2: linear vs nearest-rank "slightly different 25th/75th bands" | Measured continentally (E1): linear biases the median high (+0.17 to +0.34 per month) and the 25th/75th inward; annual GPP +0.6 %, ER +0.8 %, ET +0.5 %, NEE sink 2.8 to 3.3 % weaker (fails the tolerance). Nearest-rank is now the default. |
+> | §6, §7: distilled quantile path, band over-dispersion | The §7 continental numbers used pinball-loss models trained on linear-quantile targets. E7 shows L2 loss on nearest-rank targets removes the over-dispersion (IQR +0.3 % vs +42 %) and matches annual totals within 0.02 %, but per-pixel RMSE stays at 6.4 % (GPP) and 12 % (NEE) of std, above the 5 % threshold. |
+> | §5 Level-4 table, §6, §7 statistics | Unchanged as historical measurements. |
+
 ---
 
 ## 1. What is being compared
@@ -101,7 +114,7 @@ Statistics over the shared 600×600 grid (`n_pix` = jointly-valid pixel-months,
 
 **Reading:** R² ≥ 0.975 for every flux/band, RMSE a few % of the regional means,
 near-zero bias, mask agreement 0.999. The new pipeline reproduces the published
-product to within the inherent reimplementation residual (§8). ER is the least tight
+product to within the reimplementation residual (§8; *superseded: not inherent, see the note at the top*). ER is the least tight
 (R² ≈ 0.975–0.986), consistent with respiration being the hardest flux to upscale.
 
 ---
@@ -211,7 +224,7 @@ effect, measured on the same comparison (GPP/median unless noted):
 - 94 % of pixels (unaffected): R² = 0.979, RMSE = 8.3, bias = −0.17.
 - 6 % of pixels (in the flipped/zero-rain band): R² = −0.28, RMSE = 56, bias = −44.
 
-**Residual after fixes (~3%, inherent — not bugs):**
+**Residual after fixes (~3%; originally described as inherent. Superseded: the Gadi experiments trace it to semantic deviations, see the note at the top):**
 1. **Reprojection backend** — new uses `rasterio.reproject` (hand-built affine); the
    reference uses `odc.reproject` on labelled coordinates. Sub-pixel resampling
    differences propagate through 30 models.

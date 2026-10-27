@@ -6,6 +6,22 @@
 **Test region:** SE Australia, 600×600 px @ 500 m (148.00–151.00°E, 33.00–36.00°S), target year **2020**
 **Climatology harmonised:** 2003–2022 (full, for the step2 anomaly baseline)
 
+> **Superseded by the Gadi experiments (2026-10-27).** The bbox numbers below are
+> still valid for what they measured: the pipeline as it was then (linear quantiles,
+> no-data mask without `LAI_anom`, anomaly guard, clipped bare fraction, LST QC skipped
+> from 2022) against the published product on one 600×600 tile. Several conclusions
+> changed; see [`GADI_REPORT.md`](GADI_REPORT.md) for the 2024/2025 continental and
+> windowed experiments.
+>
+> | Statement here | Status after Gadi |
+> |---|---|
+> | §1 / Finding 4: the ≤ 3 % residual is "inherent" (reprojection backend + quantile method) | **Wrong.** The Gadi ablations attribute it to semantic deviations, chiefly the linear quantiles and the mask without `LAI_anom` (plus the anomaly guard and bare clip); the bbox itself was not re-run. With nearest-rank quantiles, the reference mask and the NaN-only mask test, step3 reproduces the published v2.1 product bit-for-bit from the reference features (E1, E2a). The reprojection backend matters only at float-noise level for 11 of 13 interim variables (E4). |
+> | Finding 3: the 0/0 → 1.0 anomaly guard is a harmless defensive measure | **Reverted.** It replaces the reference's NaN/Inf with 1.0 at about 900 k pixel-months in the 3 test windows; default is now `--anom_guard none`. |
+> | Rec. 3: nearest-rank quantiles "optionally" for bit-closer parity | **Done, and required.** Nearest-rank is the default; linear alone makes NEE fail the tolerance (annual sink 2.8 to 3.3 % weaker) and is about 200× slower. |
+> | §5: quantile distillation reproduces the ensemble at about 13× speed, bands mildly over-dispersed | **Refined.** Over-dispersion came from the pinball loss and linear-quantile targets; L2 on nearest-rank targets removes it, but the continental 2025 product still fails the per-pixel RMSE ≤ 5 % of std check (E7). |
+> | §4: step3 ensemble cost | Superseded by the Gadi measurements in [`EFFICIENCY.md`](EFFICIENCY.md). |
+> | Findings 1 and 2 (sklearn pin, SILO flip) | Unchanged. |
+
 ---
 
 ## 1. Summary
@@ -79,7 +95,7 @@ rain→1129 mm. This single fix moved all fluxes to R² ≈ 0.98–0.997.
 zero-rainfall months. Added a guard filling non-finite anomalies with 1.0 at valid-data pixels.
 Originally aimed at the masking gap, but Finding 2 was the true cause; kept as a defensive measure.
 
-### Finding 4 — residual ≤3% *(inherent, not fixed)*
+### Finding 4 — residual ≤3% *(superseded: not inherent, see the note at the top)*
 Remaining unbiased scatter comes from (a) **reprojection backend**: new `rasterio.reproject` vs
 reference `odc.reproject`; (b) **quantile method**: new `np.nanquantile` (linear interpolation) vs
 reference nearest-rank (`_percentile.np_percentile`). Both are small; matching them exactly would

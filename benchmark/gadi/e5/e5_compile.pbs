@@ -1,0 +1,18 @@
+#!/bin/bash
+#PBS -P ea89
+#PBS -q normal
+#PBS -l storage=gdata/xc0+gdata/ub8+scratch/ub8
+#PBS -l ncpus=8,mem=32GB,walltime=01:30:00
+#PBS -j oe
+WORK=/scratch/ub8/pl5189/auseflux
+source $WORK/code/AusEFlux/benchmark/gadi/pbs/_job_common.sh
+source $WORK/envs/activate_step3.sh
+job_header
+D=$WORK/results/models_compiled/NEE
+mkdir -p $D
+for f in $WORK/results/models/ensemble/v2.1/NEE/*.joblib; do ln -sfn $f $D/; done
+ls $D | wc -l
+set +e
+run_timed python $CODE/benchmark/compile_models.py --models-folder $D --parallel 8
+ls $D/compiled
+job_end $?

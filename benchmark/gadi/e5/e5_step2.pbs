@@ -1,0 +1,21 @@
+#!/bin/bash
+#PBS -P ea89
+#PBS -q normal
+#PBS -l storage=gdata/xc0+gdata/ub8+scratch/ub8
+#PBS -j oe
+# qsub -N name -o log -l ncpus=8,mem=32GB,walltime=06:00:00 -v OUTDIR=..,YEARS=2025-2025[,STAGE=gapfill][,VARS=NDWI:kNDVI][,ROWS=600:1000] e5_step2.pbs
+WORK=/scratch/ub8/pl5189/auseflux
+source $WORK/code/AusEFlux/benchmark/gadi/pbs/_job_common.sh
+source $WORK/envs/activate_step12.sh
+E=$WORK/results/e5
+job_header
+md5sum $CODE/step2_feature_datasets.py
+args=(--interim_path $E/interim --results_path $OUTDIR --static_path /g/data/xc0/project/AusEFlux/data
+      --years_out $YEARS --threads $NCPUS --verbose)
+[[ -n "${STAGE:-}" ]] && args+=(--stages "$(commas "$STAGE")")
+[[ -n "${VARS:-}" ]] && args+=(--vars "$(commas "$VARS")")
+[[ -n "${ROWS:-}" ]] && args+=(--lat_rows "$ROWS")
+mkdir -p $OUTDIR
+set +e
+run_timed python $CODE/step2_feature_datasets.py "${args[@]}"
+job_end $?

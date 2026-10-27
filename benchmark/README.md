@@ -227,10 +227,16 @@ and documented here for the original authors:
    all fluxes to R² ≈ 0.98–0.997. *(The reference avoids this by reprojecting with
    `odc.geo`/`odc.reproject` on labelled coordinates rather than a hand-built affine.)*
 
-A defensive `0/0`→`1.0` guard was also added to `_fractional_anomalies` in `step2`.
-Remaining ≤3% differences are inherent to the reimplementation (rasterio vs
-`odc.reproject`; `np.nanquantile` linear interpolation vs the reference's nearest-rank
-`src/_percentile.py`).
+A `0/0`→`1.0` guard was also added to `_fractional_anomalies` in `step2`; it is now
+off by default (`--anom_guard none`, reference behaviour).
+
+The remaining ≤3% differences on the bbox were first described as inherent. The Gadi
+experiments (2026-10-27, [`GADI_REPORT.md`](GADI_REPORT.md)) showed otherwise: they
+come from semantic deviations, chiefly linear quantiles instead of the reference's
+nearest-rank and a no-data mask without `LAI_anom`. With the current defaults (nearest
+rank, reference mask, `--mask_test nan`), step3 reproduces the published 2025 product
+bit-for-bit from the reference features. The bbox numbers in this harness were measured
+with the old defaults and have not been re-run.
 
 ---
 

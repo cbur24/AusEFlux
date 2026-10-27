@@ -1,0 +1,14 @@
+#!/bin/bash
+#PBS -P ea89
+#PBS -q normal
+#PBS -l storage=gdata/xc0+gdata/ub8+scratch/ub8
+#PBS -l ncpus=4,mem=16GB,walltime=00:40:00
+#PBS -j oe
+source /scratch/ub8/pl5189/auseflux/envs/activate_step12.sh
+E=/scratch/ub8/pl5189/auseflux/results/e5
+T=/scratch/ub8/pl5189/auseflux/code/AusEFlux/benchmark/gadi/compare_products.py
+mkdir -p $E/product_wnorth2025_default
+f=AusEFlux_${FLUX}_500m_quantiles_2025_v2.1.nc
+python $E/crop.py $E/product/$FLUX/$f $E/product_wnorth2025_default/$f 600:1000
+ex=""; [ $FLUX = NEE ] && ex="--thresholds $E/th_nee.json"
+python $T $E/product_wnorth2025_default/$f /g/data/xc0/project/AusEFlux/results/AusEFlux/v2.1/$FLUX/$f --flux $FLUX --out $E/cmp/${FLUX}_2025_north --mvg /g/data/xc0/project/AusEFlux/data/aus6_0e_mvg.tif $ex

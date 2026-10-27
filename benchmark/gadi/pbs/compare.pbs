@@ -1,0 +1,33 @@
+#!/bin/bash
+#PBS -N ausef_compare
+#PBS -P ea89
+#PBS -q normal
+#PBS -l ncpus=8,mem=32GB,walltime=02:00:00
+#PBS -l storage=gdata/xc0+gdata/ub8+scratch/ub8
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/ub8/pl5189/auseflux/logs/
+#
+# Run a benchmark/gadi comparison tool.
+#   product comparison (compare_products.py):
+#     qsub -v NEW=/path/new.nc,REF=/path/ref.nc,FLUX=GPP,OUT=/scratch/.../cmp/GPP_2025,EXTRA="--plots" compare.pbs
+#   any other tool (member_parity.py, feature_parity.py, recombine_members.py --check):
+#     qsub -v TOOL=feature_parity.py,ARGS_FILE=/scratch/.../args/e3.args compare.pbs
+#   (ARGS_FILE: one CLI argument per line; needed whenever arguments contain commas)
+WORK=${WORK:-/scratch/ub8/pl5189/auseflux}
+CODE=${CODE:-$WORK/code/AusEFlux}
+source "$CODE/benchmark/gadi/pbs/_job_common.sh"
+# AUSEF_ENV=step12 for compare_products.py (needs rasterio for the MVG raster; the
+# step3 env has none); default step3 (member_parity.py etc.)
+source "$WORK/envs/activate_${AUSEF_ENV:-step3}.sh"
+TOOL=${TOOL:-compare_products.py}
+job_header
+set +e
+if [[ "$TOOL" == compare_products.py && -n "${NEW:-}" ]]; then
+    : "${REF:?}" "${FLUX:?}" "${OUT:?}"
+    run_timed python "$GADI_TOOLS/compare_products.py" "$NEW" "$REF" --flux "$FLUX" \
+        --out "$OUT" "${EXTRA_ARGS[@]}"
+else
+    run_timed python "$GADI_TOOLS/$TOOL" "${EXTRA_ARGS[@]}"
+fi
+job_end $?

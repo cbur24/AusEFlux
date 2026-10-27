@@ -1,0 +1,31 @@
+#!/bin/bash
+#PBS -N ausef_step3
+#PBS -P ea89
+#PBS -q normal
+#PBS -l ncpus=4,mem=16GB,walltime=04:00:00
+#PBS -l storage=gdata/xc0+gdata/ub8+scratch/ub8
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/ub8/pl5189/auseflux/logs/
+#
+# Step 3 (30-member ensemble predict + combine) for one flux, year and month
+# (or a ':'-separated month list / range "1-3").  Writes the month part file
+# {output}/{FLUX}/parts/AusEFlux_{FLUX}_500m_quantiles_{YEAR}_v2.1_m{MM}.nc.
+#   qsub -v FLUX=GPP,YEAR=2025,MONTH=1-3,ARGS_FILE=/path/args step3_month.pbs
+# Default resources = the production recipe (4 cpus, 16 GB, 3 months per job);
+# override with -l (e.g. -l ncpus=24,mem=96GB for the old per-month jobs).
+# --threads is THREADS if set, else ncpus.  Flags: EXTRA (space separated, no
+# commas) and/or ARGS_FILE (one argument per line; use it for comma-containing
+# flags such as --mask_vars).  Use submit_step3_year.sh to submit a whole year
+# (month groups + the dependent merge).
+WORK=${WORK:-/scratch/ub8/pl5189/auseflux}
+CODE=${CODE:-$WORK/code/AusEFlux}
+source "$CODE/benchmark/gadi/pbs/_job_common.sh"
+source "$WORK/envs/activate_step3.sh"
+: "${FLUX:?usage: qsub -v FLUX=GPP,YEAR=2025,MONTH=1[,EXTRA=...] step3_month.pbs}"
+: "${YEAR:?}" "${MONTH:?}"
+job_header
+set +e
+run_timed python "$CODE/step3_ensemble_prediction.py" --fluxes "$FLUX" --year "$YEAR" \
+    --months "$(commas "$MONTH")" --threads "${THREADS:-$NCPUS}" "${EXTRA_ARGS[@]}"
+job_end $?

@@ -1,0 +1,27 @@
+#!/bin/bash
+#PBS -P ea89
+#PBS -q normal
+#PBS -l storage=gdata/xc0+gdata/ub8+scratch/ub8
+#PBS -j oe
+# qsub -v WIN=north,ROWS=600:1000,FLUXES="GPP NEE" -l ncpus=12,mem=48GB,walltime=03:00:00 e5_step3_win.pbs
+WORK=/scratch/ub8/pl5189/auseflux
+source $WORK/code/AusEFlux/benchmark/gadi/pbs/_job_common.sh
+source $WORK/envs/activate_step3.sh
+E=$WORK/results/e5
+job_header
+md5sum $CODE/step3_ensemble_prediction.py
+ST=$E/static_w$WIN
+mkdir -p $ST
+python - <<PY
+import xarray as xr
+r0, r1 = map(int, "$ROWS".split(':'))
+ds = xr.open_dataset('/g/data/xc0/project/AusEFlux/data/urban_water_mask_500m.nc')
+ds.isel(latitude=slice(r0, r1)).to_netcdf('$ST/urban_water_mask_500m.nc')
+print(ds.sizes, '->', r1 - r0, 'rows')
+PY
+set +e
+run_timed python $CODE/step3_ensemble_prediction.py --year 2024 --fluxes ${FLUXES:-GPP NEE} --threads $NCPUS \
+  --features_path $E/features_w$WIN --static_path $ST \
+  --variables_file $WORK/results/variables.txt --models_path $WORK/results/models_compiled \
+  --output_path $E/product_w$WIN
+job_end $?

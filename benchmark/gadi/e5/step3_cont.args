@@ -1,0 +1,10 @@
+--features_path
+/scratch/ub8/pl5189/auseflux/features_500m_e5
+--static_path
+/g/data/xc0/project/AusEFlux/data
+--variables_file
+/scratch/ub8/pl5189/auseflux/results/variables.txt
+--models_path
+/scratch/ub8/pl5189/auseflux/results/models_compiled
+--output_path
+/scratch/ub8/pl5189/auseflux/results/e5/product

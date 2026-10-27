@@ -1,0 +1,26 @@
+#!/bin/bash
+#PBS -N ausef_step2
+#PBS -P ea89
+#PBS -q normal
+#PBS -l ncpus=24,mem=96GB,walltime=10:00:00
+#PBS -l storage=gdata/xc0+gdata/ub8+scratch/ub8
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/ub8/pl5189/auseflux/logs/
+#
+# Step 2 (feature datasets) for one stage (or several, ':'-separated) and an
+# optional variable subset (gapfill stage), so stages/vars can be sharded.
+#   qsub -v STAGE=gapfill,VARS=NDVI:LAI:LST step2_stage.pbs
+#   qsub -v STAGE=anom,EXTRA="--years_out 2024-2025 --anom_guard none" step2_stage.pbs
+# Stages: gapfill vegfrac cmlrain deltat anom c4.
+WORK=${WORK:-/scratch/ub8/pl5189/auseflux}
+CODE=${CODE:-$WORK/code/AusEFlux}
+source "$CODE/benchmark/gadi/pbs/_job_common.sh"
+source "$WORK/envs/activate_step12.sh"
+: "${STAGE:?usage: qsub -v STAGE=gapfill[,VARS=a:b][,EXTRA=...] step2_stage.pbs}"
+job_header
+args=(--stages "$(commas "$STAGE")" --threads "$NCPUS")
+[[ -n "${VARS:-}" ]] && args+=(--vars "$(commas "$VARS")")
+set +e
+run_timed python "$CODE/step2_feature_datasets.py" "${args[@]}" "${EXTRA_ARGS[@]}"
+job_end $?

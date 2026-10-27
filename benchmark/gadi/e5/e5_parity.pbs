@@ -1,0 +1,20 @@
+#!/bin/bash
+#PBS -P ea89
+#PBS -q normal
+#PBS -l storage=gdata/xc0+gdata/ub8+scratch/ub8
+#PBS -j oe
+# qsub -v YEAR=2025,NEWDIR=<dir or windowed dir pattern with {w}>,TAG=cont2025 -l ncpus=12,mem=48GB,walltime=01:30:00 e5_parity.pbs
+source /scratch/ub8/pl5189/auseflux/envs/activate_step12.sh
+export OMP_NUM_THREADS=1 PYTHONUNBUFFERED=1 HDF5_USE_FILE_LOCKING=FALSE
+E=/scratch/ub8/pl5189/auseflux/results/e5
+mkdir -p $E/parity
+START=$(date +%s)
+NP=4
+for w in north centre south; do
+  nd=${NEWDIR//\{w\}/$w}
+  for ((p=0; p<NP; p++)); do
+    /usr/bin/time -f "parity $w $p %e s maxrss %M KB" python $E/e5_parity.py $w $YEAR $nd $p $NP $E/parity/${TAG}_${w}_p$p.json > $E/parity/${TAG}_${w}_p$p.out 2>&1 &
+  done
+done
+wait
+echo "=== elapsed $(( $(date +%s) - START )) s"

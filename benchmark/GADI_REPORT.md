@@ -1,0 +1,113 @@
+# AusEFlux refactor vs reference v2.1 — Gadi experiments (2024 & 2025 baseline)
+
+Status ledger. Filled in as experiments complete. Plan: `~/.claude/plans/review-the-code-in-glistening-salamander.md`.
+Targets: GPP + NEE primary (Australia's Environment report), ER + ET secondary. Baseline = v2.1 products for 2024 and 2025 on Gadi
+(`/g/data/xc0/project/AusEFlux/results/AusEFlux/v2.1/`, published copy `/g/data/ub8/au/AusEFlux/v2.1/monthly/`).
+Compute: project ea89 only (budget ~5 KSU). Work tree: `/scratch/ub8/pl5189/auseflux`. Nothing written under xc0.
+
+## Tolerance (proposed; floor calibrated by E2b)
+Per flux/band, continental, jointly-valid pixel-months: R² ≥ 0.99 (GPP, ET) / ≥ 0.97 (NEE, ER); |bias| ≤ 1 % of mean |ref|; RMSE ≤ 5 % of ref std;
+mask Jaccard ≥ 0.999; continental monthly means within 2 %; annual sums within 1 % (continent) / 2 % (per MVG).
+
+## Experiment status
+| ID | Question | Status | Result (one line) | SU |
+|---|---|---|---|---|
+| E0 | Integrity gate (xc0 vs ub8, grids, member inventory, src history) | done | xc0 == ub8 bit-identical; 2024 v2.1 member files exist (historical/, time=264); ref applied LST QC in 2024/25; mask incl. LAI_anom; 2 dart lgbm members/flux | 0.3 |
+| E1 | Combine isolation (nearest vs linear on 2024+2025 member files) | done | nearest-rank recombination **bit-exact** vs published for GPP/NEE/ER/ET × 2024/2025 (max|Δ|=0, Jaccard 1). Linear alone: +0.3 median bias (GPP +0.6 %, ER +0.8 %, ET +0.5 % annual; **NEE +2.8–3.3 % annual sink → FAILS scorecard**). n=20/10 members fail (R² 0.994/0.984) | 49 |
+| E2a | Prediction-engine parity per member (2025, months 1/6/12, continental) | done | **Bit-exact**: all 30 lgbm members (incl. dart) max|Δ|=0; RF ≤1 ulp at ≤2 px/member (thread summation order). Product parts bit-identical to published 2025 (max|Δ|=0, Jaccard 1) with nearest + LAI_anom mask + `--mask_test nan`. valid_only exact, 1.8× faster predict; tl2cgen exact incl. dart, 1.85× on lgbm | 164 |
+| E2b | Reference drift floor (2024, 3 windows, current ref features vs May-2025 product) | done | Engine exact (many window-months bit-identical, all members). Ref features drifted at ≤3 % of pixels (north; 99 % of them Dec-2024 only), 0.01–0.02 % centre/south; masks identical; window means agree ≤1e-3 rel.; R² ≥ 0.9996 all bands; scorecard PASS | 53 |
+| E3 | Feature-stage parity (new step2 on ref interim; VPD continental + 3 windows × 3 variants) | done | Reference-semantics variant (`--no_bare_clip --anom_guard none`, flox/bottleneck OFF): **16/28 features bit-identical**, rest at float32 rounding (gap-filled vars 0.06–1.5 % of px differ ≤1.5e-5; veg fractions ≤5e-7; C4 ≤1.8e-4). flox/bottleneck move results AWAY from the ref. Bugs fixed: `.ipynb_checkpoints`; open_mfdataset `chunks={}` re-read whole 2.7 GB files per tile (68 s → 0.55 s/tile) | 193 |
+| E4 | Harmonisation parity (new step1 2024/2025 from raw vs ref interim) | done | 11/13 vars bit-exact or float noise (NDVI, LAI, Tmax exact; Tmin/kTavg/Tavg ≤4e-6; SRAD/VPD ≤3e-4; rain ≤0.04 mm). NDWI/kNDVI values ≤1e-3 but ref has 0.3 % more NaN (ref NaN-poisoning artefact, reproduced exactly in emulation). LST/VegH RMSE 0.004 °C / 0.002 m from ref GeoBox float32 affine + odc tiling. QC rule `ref` confirmed (`new` → RMSE 0.43 °C). **step1: 21 min wall, 13 SU/yr vs ref 3.5 h** | 64 |
+| E5 | End-to-end acceptance (new step1 → step2 → step3 vs published v2.1; continental 2025 GPP+NEE, 2024 on 3 windows) | done | **Continental 2025 GPP + NEE PASS on all 3 bands** (328 M pixel-months/band): R² 0.9995–0.9998, RMSE 1.4–2.2 % of std, bias ≤0.003, Jaccard 0.999999, 98.2–98.7 % bit-equal, monthly means ≤0.14 %, annual sums GPP −4e-6…−2e-5, NEE −0.03…−0.05 %, worst MVG 0.38 %. 2024 windows: south and centre PASS (R² ≥ 0.99988); **north FAILS with step1 `--modis_nodata exclude`** (GPP RMSE 6.2 %, NEE 9.5 % of std, NEE monthly 2.1–2.4 %, Jan–Mar/Dec wet season) and **PASSES with `poison`** (1.2 % / 3.0 %; 2025 north R² 0.999999). Attribution by feature parity: NDWI/kNDVI mask is the only material driver; LST/ΔT and VegH minor; step2 exact to float noise. Cost: step2 continental 114 SU (2.5 h critical path; vegfrac CPU-bound 1.8 h), step3 GPP 72 / NEE 86 SU per flux-year productive (+50 SU lost to 3 slow nodes) | 439 |
+| E6 | Efficiency (profile + optimisations, exactness) | step3 done (windowed); step1/step2 timing from E4/E3w | All configs bit-identical. Knee at 4–12 threads (eff. 1.0 → 0.85); 24 thr 0.70; 48 thr 0.45 (RF saturates). tl2cgen lgbm 1.4–2×; normalsr +20 %/SU (lgbm only); no exact RF path faster than sklearn (ONNX inexact, GTIL 4–9× slower, hummingbird wrong). nanquantile 200× slower than nearest. **Prod: 4 thr, 3 months/job, compiled lgbm, nearest, valid_only ≈ 60–80 SU/flux-yr** (vs ≈150 at 24 thr) | 42 |
+| E7 | Fast quantile path at scale (targets from ref member files; windows + continental 2025) | done | **L2 loss fixes over-dispersion** (pinball IQR +42 %, band bias ±4 %; L2 IQR +0.3 %, bias ≤0.3 %). Continental 2025 (l2, 500 trees/31 leaves, 3 M-sample): GPP R² 0.996, RMSE 6.4 % of std, annual −0.02 %, monthly ≤0.3 %, MVG ≤0.6 %; NEE R² 0.986, RMSE 12 % of std, annual +0.02 %, monthly ≤2.9 %, small-MVG fails. **Fails only the per-pixel RMSE ≤5 % check**; 21 SU/flux-yr (8× cheaper). Bigger models (3000×255) reach 5.0–5.6 % but cost more than the ensemble | 128 |
+
+## Deviation ablation table (filled from E1–E4)
+| # | Deviation (new vs reference) | Effect on tolerance metrics | Efficiency delta | Decision |
+|---|---|---|---|---|
+| 1 | linear vs nearest-rank quantiles | systematic: median/25th biased high, 75th low; NEE fails (bias 2 %, annual 2.8–3.3 %); GPP/ER/ET pass but +0.5–1 % | nearest is FASTER (sort+take; np.nanquantile is a per-pixel Python loop in numpy 1.26) | **default → nearest** |
+| 2 | LAI_anom dropped from no-data mask | +0.41 % predicted pixels (112 k/month, Lake Eyre basin etc.), low-GPP pixels; values elsewhere identical | none | revert to reference list (no efficiency gain) |
+| 3 | anomaly non-finite → 1.0 (guard) vs ref NaN/Inf | ref has 813 k NaN + 87 k +Inf LAI_anom px (0.8 %), 12 k rain_anom, 12 k rain_cml*_anom in 3 windows×24 months; guard feeds 1.0 instead of masking (NaN) / 0 (Inf) | none | **default → `--anom_guard none`** |
+| 4 | bare clipped at 0 | ref has negative bare at 579 k px-months in 3 windows (min −0.61, SE temperate); `--no_bare_clip` reproduces them to 3.6e-7 | none | **default → `--no_bare_clip`** |
+| 5 | LST QC skipped for ≥2022 | 2025: 8–75 % of LST pixels change, RMSE 0.43 °C, bias −0.13 °C vs ref | none (QC read is cheap) | **default → ref rule** (QC except 2022/2023) |
+| 6 | rasterio vs odc reprojection | same-grid vars are pure pixel copies in both (exact); bilinear vars differ ≤3e-4 (GDAL 3.9 vs 3.12); ref's odc path adds artefacts (NaN poisoning on NDWI/kNDVI masks 0.3 %; GeoBox affine on LST/VegH) | rasterio path is faster and simpler; `exclude` vs `poison` costs the same | keep rasterio (exact where it matters). **`--modis_nodata` default → `poison`**: `exclude` is not cheaper and fails the 2024 north window (E5), so by the decision rule it is not kept as the default. `--engine odc` fixed (source GeoBox from `_affine()`), kept for comparison only |
+| 7 | float32 / positional minor items (float32 before warp, float32 coords, C4 transform from float32 centres, positional `ndvi_min`) | E3w/E4: static grids identical so positional `ndvi_min` ≡ coordinate alignment; C4 ≤1.8e-4; bilinear vars ≤3e-4 (GDAL version, not float32); no scorecard metric moves (E5 windows with `poison`: RMSE ≤3 % of std, at the E2b drift floor) | none measurable | keep as is |
+| 8 | no-data mask on ~isfinite (new) vs isnull (ref: +Inf anomalies NOT masked, set to 0 by clean=True) | 0.05–0.09 % of valid pixels/month (LAI clim = 0) predicted by ref, masked by new | none | `--mask_test nan` added; make it the default (no efficiency gain) |
+| 9 | flox/bottleneck off (new default) vs installed in ref env | measured: enabling them moves anomalies/cml rain/veg fractions from 100 % → ~50 %/6 %/15 % bit-equal (float64 accumulation in flox), NDWI_anom rel. RMSE 9e-4 → 7e-2 where clim ≈ 0 | rolling 8× faster but stage is I/O-bound | keep OFF |
+
+## Timing / SU table
+| Stage | Reference (2025 run, from file timestamps + PBS script) | New (measured) |
+|---|---|---|
+| step1 per year | ~3.5 h (dask cluster, hugemem/normalsr) | 21 min wall sharded (climate group bound by 13–15 GB OzWALD daily files), ≈13.3 SU/yr, RSS < 4 GB |
+| step2 | ≈6.5 h wall for the full 2003–2025 stacks (ref, 2026-03-10) | **E5 measured, continental `--years_out 2025-2025`, 8 cpus, sharded over 22 jobs: 114 SU, 2.5 h critical path** (gapfill 23–40 min/pair, vegfrac 1 h 46 min CPU-bound, anomalies 10–50 min each); with stored climatologies est. 15–25 SU (north window 58 → 6 min) |
+| step3 per flux (30 members) | 30 jobs × ≤1 h × 26 cpus (normalsr) ≈ 1,560 SU/flux-yr upper bound + combine ~17 min/flux | fused, valid_only: 24 thr ≈ 150 SU/flux-yr (6–9 core-h/month, RF 55–60 %, RSS 11 GB); **E5 measured, 4 thr + compiled lgbm, 3 months/job: GPP 72 SU/flux-yr (0.75 h/month), NEE 86 SU/flux-yr (0.89 h/month)**, RF ≈70 % of predict, PBS peak 10.4 GB; 3 of 12 jobs landed on 2–3× slower nodes (+50 SU), so prefer 1 month/job |
+
+## E0 findings (2026-10-27)
+- Products: xc0 working copy and ub8 published copy are bit-identical (values + NaN masks) for GPP/NEE 2024/2025; same grid as land/urban masks
+  (lat -10.0025..-43.9975 desc, lon 112.0025..153.9975, 0.005°). Time = 15th of month in both; encodings differ only.
+- Valid pixel-months: 327,995,370 (2024), 328,162,471 (2025) ≈ 27.3 M/month of 27.86 M land pixels. Reference per-band stats: `/scratch/ub8/pl5189/auseflux/results/e0_reference_stats.json`.
+- Per-member v2.1 predictions exist for 2024 (one 60 GB file per member, 2003–2024) and 2025 (one per member, 12 months) → E1 can be exact for both years; E2b is an exact check, not a drift estimate.
+- Reference code at the time of the May-2025 (2024) run and the March-2026 (2025) run is semantically identical for the five pipeline modules
+  (last change 2025-02-26): LST QC applied for all years except 2022/2023 (so applied for 2024, 2025); masking_vars = LAI_anom, VegH, NDWI, rain_anom, Tavg; nearest-rank quantiles.
+- Surprises: (1) 2025 MCD43A4 inputs store reflectance ×10000 with no scale_factor (2024 files are scaled), and composites 19, 20, 33, 38 of 2025 are entirely fill;
+  (2) 2 of 15 LightGBM members per flux are dart boosters (tl2cgen exactness to be checked); (3) step3 env has lightgbm 4.7.0 vs reference 4.2.0.
+- Envs on Gadi: `/scratch/ub8/pl5189/auseflux/envs/{step12,step3}` (uv-built; activation scripts export AUSEFLUX_* paths).
+
+## E3 notes (2026-10-27)
+- Reference interim: 23 files/var (2003–2025; rain 2002–2025), (12, 6800, 8400) float32 contiguous, time 15th. Static grids identical to the mask grid (positional `ndvi_min` indexing is equivalent to coordinate alignment).
+- Reference step2 wall time ≈ 6.5 h (features written 14:07–20:11 on 2026-03-10), not ~1 day.
+- New step2 `--years_out 2024-2025` output ≈ 45 GB compressed (+15 GB climatologies) vs 1.7 TB for full stacks.
+- Reference env has flox 0.9.15, Bottleneck 1.4.2, numbagg → reference used xarray's fast paths; new step2 defaults them off (`--bottleneck --flox` available).
+
+## E2a notes (2026-10-27)
+- Engine parity on reference 2025 features, continental months 1/6/12, GPP+NEE: every LightGBM member bit-identical to the reference member files (82 M pixel-months each); RandomForest members differ at ≤2 pixels by one float32 ulp (24-thread tree summation vs reference n_jobs=1); no percentile affected.
+- With `--quantile_method nearest --mask_vars LAI_anom,VegH,NDWI,rain_anom,Tavg --mask_test nan`, the fused product equals the published product exactly (100 % bit-equal, Jaccard 1.0, n = 27.3 M/month).
+- Masking ablation (GPP m06): dropping LAI_anom adds 112,347 predicted pixels (+0.41 %); Inf-vs-NaN test moves a further 12.8–25.8 k pixels/month.
+- Efficiency (24 cpus, continental month, 30 members): valid_only predicts 47.9 % of rows, bit-identical, predict 1385 s → 775 s; tl2cgen compiled lgbm 320 s → 173 s, bit-identical incl. dart members; dumps add ~90 s write. Peak RSS ≈ 11 GB.
+
+## E1 notes (2026-10-27)
+- Nearest-rank (`idx = round_half_even(q·(n_valid−1))`, ≥3 valid) recombination of the 30 reference member files reproduces the published product bit-for-bit: all 4 fluxes × {2024, 2025} × 3 bands (328 M values each). Combine chain fully understood.
+- Linear interpolation changes values only (mask identical): median +0.32 (GPP), +0.25 (NEE), +0.34 (ER), +0.17 (ET) gC m⁻² month⁻¹; 25th biased high, 75th low. Continental annual: GPP +0.6 %, ER +0.8 %, ET +0.5 %, NEE sink weaker by 2.8 % (2025) / 3.3 % (2024) → NEE fails tolerance on the quantile method alone.
+- Member subsampling (first-N lexicographic = LightGBM-heavy mix): N=20 R² 0.994, RMSE/std 0.07; N=10 R² 0.984. Both fail; not a viable efficiency lever (and the member mix is biased).
+- Tool fixes: `recombine_members.py --year`, threaded blocks, fast linear path; `compare.pbs` takes `AUSEF_ENV=step12` (rasterio needed for the MVG raster).
+
+## E6w notes (2026-10-27, GPP 2025 m06, windows 2800:3200 and 5000:5400)
+- Thread scaling (predict lgbm+rf): 1→4→8→12→24→48 threads: speedup 1 / 4.2 / 6.9 / 10.6 / 16.9 / 21.9 (centre window). RF gains nothing beyond 24 threads. Lowest SU per product at 4 threads.
+- Every configuration (threads, joblib vs tl2cgen, normal vs normalsr) gives bit-identical products (not even one-ulp RF differences in the float32 product).
+- RF alternatives on 3 members: ONNX float32 inexact (6e-5, splits rounded) and not faster; treelite GTIL exact but 4–9× slower; hummingbird ~100× slower and wrong. Keep sklearn, n_jobs = threads.
+- Combine: nearest 0.9 s vs np.nanquantile 185 s on the window (≈10 s vs ≈30 min per continental month).
+- Recommended production: `--threads 4` (ncpus=4, mem=16GB), 3 months per job (~3 h), compiled LightGBM, `--quantile_method nearest --valid_only`; normalsr if available (+20 % throughput/SU).
+
+## E2b notes (2026-10-27)
+- New step3 (nearest, LAI_anom mask, `--mask_test nan`, valid_only) on the reference's current 2024 features vs the reference historical member files: per flux-window-month, the fraction of bit-equal pixels is identical across all 30 members (gbdt, dart, rf) → differences are input-pixel changes, not engine effects. SOUTH Jan–Mar and CENTRE Mar/Jul/Aug are bit-identical for every member.
+- Drift pattern: grows toward December (NORTH Dec: 2.9 % of pixels; Nov 0.1 %), i.e. the end-of-series `interpolate_na(limit=2)` / climatology gap-fill changed when 2025 data were appended. A small Apr/May bump in CENTRE (~300 px) is not end-of-series.
+- Product vs published 2024 (windows): R² 0.99957–0.999999, bias ≤0.01, Jaccard 1.0, 99.74–99.998 % exact; scorecard PASS everywhere. This is the tolerance floor for E5.
+- Timing (12 cpus, 12 months, 30 members): 0.07–0.24 core-h per 400-row window-month.
+
+## E4 notes (2026-10-27)
+- NaN mask of NDWI/kNDVI: xarray 2024.10 drops `attrs['nodata']` through the band arithmetic/resample, so the reference's odc `average` reprojection runs with src_nodata=None and any partly-NaN source block becomes NaN (≈0.3 % of pixel-months, 0.8–1.5 M per year, all "new-only finite"). Emulating that chain reproduces the reference bit-exactly; restoring nodata=NaN reproduces ours. Our behaviour (exclude NaN sub-pixels) is the more correct one; an option can mimic the reference.
+- LST/VegH: the reference's pickled `grid_500m` GeoBox has pixel size 0.004999999418° and an origin offset ≈2e-6°, and odc tiles the warp (seams at cols 6000/8000). Effect: RMSE 0.004 °C / 0.002 m, isolated pixels up to 10 °C / 3.8 m, 0.03 % mask differences both ways. Not reproducible with odc-geo 0.5.3 either (VegH RMSE 0.83 m with 0.5.3 vs bit-exact with 0.4.2).
+- Rain: SILO ocean NaN → 0 by skipna sum in both pipelines; coastal bleed identical (0 land pixels differ >1 %).
+- `--engine odc` bug: source GeoBox derived from float32 coords (dlon 0.0049972534 vs 0.005) → up to 4–5 px shift in the east and NaN in the last 5 columns for 500 m OzWALD Tmin/Tmax (propagates to Tavg, VPD). Fix: build the source GeoBox from `_affine()`.
+- step1 timing per year (sharded): climate+SILO 21 min/12 cpus (8.4 SU), NDWI+kNDVI 10 min/8 cpus (2.6), NDVI+LAI 3.5 min (0.9), LST 6 min (1.5), VegH 0.7 min (0.1). Effective CPU use 1.2–2.1 cores → 4–6 cpus would suffice.
+
+## E7 notes (2026-10-27)
+- Targets: nearest-rank quantiles of the 30 reference member files at sampled pixels (600 k 2025 train, 300 k 2024 held out, 3 M "big" 2025); at every sample the targets equal the published product bit-for-bit. Test windows excluded from sampling.
+- Held-out 2024 (GPP q50 R² / RMSE % std): pinball 0.9916 / 9.2 with ±4 % band bias and IQR +42 %; L2 0.9945 / 7.4, IQR +0.3 %; L2 1500×63 0.9963 / 6.1; L2 3000×255 0.9975 / 5.0 (prediction 12.8× slower → ≈220 SU/flux-yr, more than the ensemble). More data without more capacity does not help. Huber ≈ L2. Band-order violations 0.1–0.8 % of pixels; sorting the bands is free.
+- Continental 2025 (L2 3 M sample, 500×31; 24 cpus, 27 min/flux, 21.3 SU): GPP 4853.6 vs 4854.5 TgC; NEE −812.6 vs −812.8 TgC; Jaccard 1.0.
+- Recommendation: production distillation = L2 on nearest-rank member targets + band sort; recalibrate the per-pixel RMSE threshold against the E2b drift floor (reference's own drift ≈1 % of std at sampled pixels, so 5 % is a genuine gap, not noise); per-MVG NEE check needs a mean-|ref| denominator.
+- Caveat: a run-labelling mix-up was found and corrected by the agent (the continental run used the 3 M-sample 500×31 L2 models, not the 1500×63 ones); numbers above reflect what actually ran.
+
+## E3w notes (2026-10-27)
+- Per-feature parity (3 windows, 2024–25) with reference semantics: rain, SRAD, Tavg, VPD, VegH, rain_cml3/6/12, rain_anom, rain_cml*_anom, SRAD/Tavg/VPD_anom bit-identical. Gap-filled NDWI/kNDVI/NDVI/LAI/LST/ΔT differ at ulp level in ≤1.5 % of pixels (the reference's `(x−clim)+clim` round trip is itself not exact in float32). NDWI_anom/kNDVI_anom show large absolute but tiny relative differences where the monthly climatology ≈ 0 (division amplifies ulp noise; e.g. clim −4.5e-9 → anomaly 1.7e7). Masks and NaN/Inf patterns identical for all 28 features.
+- The reference's dask-backed xarray path produced the same numbers as plain numpy; flox's float64 accumulation does not.
+- step2 is I/O bound; reading contiguous interim files must be chunked by tile (fix applied in E5 to the repo).
+
+## E5 notes (2026-10-27/28)
+- Chain: hybrid interim (`results/e5/interim/`: reference 2003–2023, rain from 2002; E4 step1 files for 2024–2025) → step2 `--years_out 2025-2025` continental sharded over 22 PBS jobs (`features_500m_e5/`, 28 stacks, 37 GB incl. 20 climatologies, each saved once and reused) → step3 GPP+NEE production config (4 threads, 3 months/job, compiled LightGBM, nearest-rank, LAI_anom mask, `--valid_only`) → `compare_products.py` vs published with MVG breakdown and annual sums. 2024 ran the same chain on the three latitude windows (north 600:1000, centre 2800:3200, south 5000:5400).
+- step2 bug found on first submission: new step1 files lack the reference's `spatial_ref` coordinate, so `open_mfdataset` refused the mixed interim. Fixed with `drop_variables=['spatial_ref','crs']` (never used as data); lat/lon checked identical for all variables. Smoke harness 38/38 incl. a mixed-interim test.
+- Continental 2025 scorecard (all PASS): GPP median R² 0.999797, RMSE 0.662 (1.43 % of std), bias +9e-5, 98.47 % bit-equal, annual 4854.47 vs 4854.49 TgC; NEE median R² 0.999540, RMSE 0.385 (2.15 %), bias −0.0031, 98.19 % bit-equal, annual −813.02 vs −812.77 TgC (−0.03 %); worst MVG Chenopod 0.38 %; worst month Dec −0.11 % (NEE). q25/q75 equivalent. Tables and plots: `results/e5/cmp/{GPP,NEE}_2025_cont/`.
+- 2024 windows (median): south R² 0.999983 / 0.999964 (GPP / NEE) PASS; centre 0.999951 / 0.999885 PASS; north 0.99615 / 0.99107 FAIL on RMSE/std (6.2 % / 9.5 %) and NEE monthly mean (2.1–2.4 %). Differences concentrate in Jan–Mar and Dec (up to 26 % of NDWI/kNDVI pixels differ in Feb): the reference's NaN-poisoned NDWI/kNDVI mask changes the wet-season gap-fill. Rerunning step1 NDWI/kNDVI with `--modis_nodata poison` (5.4 SU) → north 2024 R² 0.99987 / 0.99909, RMSE 1.2 % / 3.0 % PASS, at the E2b drift floor (Dec worst); north 2025 R² 0.999999. Decision: `poison` becomes the step1 default (deviation #6).
+- Residual with `poison`: LST/ΔT (1.1 % of north pixel-months, from the reference's GeoBox affine, E4) and VegH (3.7 % of centre pixels, ≤3.6 m); step2 exact to float noise for every other feature (0 pixel-months above 1e-3 relative).
+- Cost: 438.7 SU of the 450 cap (step2 114, 2024-window step2 24, window step3 35, poison variants 35, continental step3 220 incl. ≈50 on slow nodes, compares/parity ≈21). Annual-update estimate for GPP+NEE with the new pipeline ≈ 285 SU (≈190 with stored climatologies) vs ≈1,560 SU per flux for the reference's step3 alone.
+- Outputs: `/scratch/ub8/pl5189/auseflux/results/e5/{product,product_w*,cmp,parity,logs}`; PBS scripts `e5_step2.pbs`, `e5_step3_win*.pbs`, `cmp.sh`, `e5_parity.py`; copies under `/g/data/ub8/au/blobs/auseflux_refactor/e5/`.

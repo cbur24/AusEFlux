@@ -1,0 +1,33 @@
+#!/bin/bash
+#PBS -N ausef_recombine
+#PBS -P ea89
+#PBS -q normal
+#PBS -l ncpus=8,mem=48GB,walltime=03:00:00
+#PBS -l storage=gdata/xc0+gdata/ub8+scratch/ub8
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/ub8/pl5189/auseflux/logs/
+#
+# E1: recombine the 30 reference member files with a given quantile method,
+# either writing a product (OUT=...) or checking against one (CHECK=...).
+#   qsub -v FLUX=GPP,METHOD=nearest,MEMBER_DIR=/g/data/xc0/project/AusEFlux/results/predictions/annual_update/v2.1/2025/GPP,CHECK=/g/data/xc0/project/AusEFlux/results/AusEFlux/v2.1/GPP/AusEFlux_GPP_500m_quantiles_2025_v2.1.nc recombine.pbs
+#   qsub -v FLUX=GPP,METHOD=linear,MEMBER_DIR=...,OUT=/scratch/ub8/pl5189/auseflux/e1/GPP_2025_linear.nc recombine.pbs
+WORK=${WORK:-/scratch/ub8/pl5189/auseflux}
+CODE=${CODE:-$WORK/code/AusEFlux}
+source "$CODE/benchmark/gadi/pbs/_job_common.sh"
+source "$WORK/envs/activate_step3.sh"
+: "${FLUX:?}" "${MEMBER_DIR:?}"
+METHOD=${METHOD:-nearest}
+job_header
+args=("$MEMBER_DIR" --flux "$FLUX" --method "$METHOD")
+if [[ -n "${CHECK:-}" ]]; then
+    args+=(--check "$CHECK" --json "${JSON:-$WORK/e1/${FLUX}_${METHOD}_check.json}")
+    mkdir -p "$WORK/e1"
+else
+    : "${OUT:?give OUT=... or CHECK=...}"
+    mkdir -p "$(dirname "$OUT")"
+    args+=(--out "$OUT")
+fi
+set +e
+run_timed python "$GADI_TOOLS/recombine_members.py" "${args[@]}" "${EXTRA_ARGS[@]}"
+job_end $?

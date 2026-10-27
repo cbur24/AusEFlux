@@ -1,0 +1,26 @@
+#!/bin/bash
+#PBS -N ausef_merge
+#PBS -P ea89
+#PBS -q normal
+#PBS -l ncpus=2,mem=16GB,walltime=01:00:00
+#PBS -l storage=gdata/xc0+gdata/ub8+scratch/ub8
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/ub8/pl5189/auseflux/logs/
+#
+# Merge the 12 month part files of a sharded step3 run into the product
+# (benchmark/gadi/merge_months.py; verifies all months and a bit-exact read-back).
+#   qsub -v FLUX=GPP,YEAR=2025,OUTPUT=/scratch/ub8/pl5189/auseflux/results/AusEFlux merge.pbs
+# MONTHS (optional, ':'-separated, default 1-12): expected months.
+WORK=${WORK:-/scratch/ub8/pl5189/auseflux}
+CODE=${CODE:-$WORK/code/AusEFlux}
+source "$CODE/benchmark/gadi/pbs/_job_common.sh"
+source "$WORK/envs/activate_step3.sh"
+: "${FLUX:?}" "${YEAR:?}"
+OUTPUT=${OUTPUT:-$AUSEFLUX_ROOT/results/AusEFlux}
+job_header
+set +e
+run_timed python "$GADI_TOOLS/merge_months.py" "$OUTPUT/$FLUX/parts" --flux "$FLUX" \
+    --year "$YEAR" --out "$OUTPUT/$FLUX/AusEFlux_${FLUX}_500m_quantiles_${YEAR}_v2.1.nc" \
+    --months "$(commas "${MONTHS:-1-12}")" "${EXTRA_ARGS[@]}"
+job_end $?
