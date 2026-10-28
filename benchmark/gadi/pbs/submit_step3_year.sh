@@ -21,6 +21,9 @@
 #                   ignored if --models_path is among the flags
 #   MONTHS          months to run (default "1 2 ... 12")
 #   QUEUE           optional PBS queue (e.g. normalsr)
+#   DEPEND          optional ':'-separated job ids; every month job waits for
+#                   them (-W depend=afterok:...), e.g. the step2 jobs
+#   LOG_DIR         directory for the PBS logs (default: the templates' $WORK/logs/)
 #   WORK, CODE      as in _job_common.sh
 #   DRY_RUN=1       print the qsub commands instead of submitting
 # Old behaviour (one 24-cpu job per month): THREADS=24 MONTHS_PER_JOB=1.
@@ -81,6 +84,11 @@ qsub_() {
 }
 QARGS=(-l "ncpus=$THREADS,mem=${MEM_GB}GB,walltime=$WALLTIME")
 [[ -n "${QUEUE:-}" ]] && QARGS+=(-q "$QUEUE")
+[[ -n "${DEPEND:-}" ]] && QARGS+=(-W "depend=afterok:$DEPEND")
+LOGARGS=()
+if [[ -n "${LOG_DIR:-}" ]]; then
+    mkdir -p "$LOG_DIR"; LOGARGS=(-o "$LOG_DIR/")
+fi
 
 # group the months: consecutive runs -> "a-b", otherwise "a:b:c"
 read -r -a mlist <<< "$MONTHS"
@@ -96,7 +104,7 @@ for ((i = 0; i < ${#mlist[@]}; i += MONTHS_PER_JOB)); do
     else
         sel=$(IFS=:; echo "${grp[*]}"); tag=$(IFS=_; echo "${grp[*]}")
     fi
-    id=$(qsub_ -N "s3_${FLUX}_${YEAR}_m$tag" "${QARGS[@]}" \
+    id=$(qsub_ -N "s3_${FLUX}_${YEAR}_m$tag" "${QARGS[@]}" "${LOGARGS[@]}" \
         -v "WORK=$WORK,CODE=$CODE,FLUX=$FLUX,YEAR=$YEAR,MONTH=$sel,THREADS=$THREADS,ARGS_FILE=$ARGS_FILE" \
         "$PBS_DIR/step3_month.pbs")
     echo "months $sel -> $id"
@@ -104,7 +112,7 @@ for ((i = 0; i < ${#mlist[@]}; i += MONTHS_PER_JOB)); do
 done
 dep=$(IFS=:; echo "${ids[*]}")
 MQ=(); [[ -n "${QUEUE:-}" ]] && MQ=(-q "$QUEUE")
-mid=$(qsub_ -N "s3_${FLUX}_${YEAR}_merge" "${MQ[@]}" -W "depend=afterok:$dep" \
+mid=$(qsub_ -N "s3_${FLUX}_${YEAR}_merge" "${MQ[@]}" "${LOGARGS[@]}" -W "depend=afterok:$dep" \
     -v "WORK=$WORK,CODE=$CODE,FLUX=$FLUX,YEAR=$YEAR,OUTPUT=$OUTPUT,MONTHS=$(echo $MONTHS | tr ' ' ':')" \
     "$PBS_DIR/merge.pbs")
 echo "merge -> $mid  (after ${#ids[@]} jobs of ${THREADS} cpus / ${MEM_GB} GB / $WALLTIME; output $OUTPUT/$FLUX/)"

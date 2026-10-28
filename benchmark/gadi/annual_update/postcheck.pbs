@@ -1,0 +1,16 @@
+#!/bin/bash
+#PBS -P ea89
+#PBS -q normal
+#PBS -l ncpus=2,mem=16GB,walltime=00:40:00
+#PBS -l storage=gdata/xc0+gdata/ub8+scratch/ub8
+#PBS -j oe
+# Runs postcheck.sh YEAR in the step12 env (needs netCDF4/numpy).
+WORK=${WORK:-/scratch/ub8/pl5189/auseflux}
+CODE=${CODE:-$WORK/code/AusEFlux}
+source "$CODE/benchmark/gadi/pbs/_job_common.sh"
+source "$WORK/envs/activate_step12.sh"
+: "${YEAR:?}"
+job_header
+set +e
+FLUXES="${FLUXES//:/ }" WORK=$WORK CODE=$CODE "$CODE/benchmark/gadi/annual_update/postcheck.sh" "$YEAR"
+job_end $?

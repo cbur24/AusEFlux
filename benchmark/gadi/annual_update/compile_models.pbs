@@ -1,0 +1,23 @@
+#!/bin/bash
+#PBS -P ea89
+#PBS -q normal
+#PBS -l ncpus=8,mem=32GB,walltime=01:30:00
+#PBS -l storage=gdata/xc0+gdata/ub8+scratch/ub8
+#PBS -j oe
+# Compile the LightGBM members of one flux with tl2cgen into a writable copy
+# of the model folder (joblibs symlinked, RF members skipped).  ≈ 0.4 SU.
+#   qsub -v WORK=..,CODE=..,FLUX=GPP,MODELS=..,DEST=.. compile_models.pbs
+WORK=${WORK:-/scratch/ub8/pl5189/auseflux}
+CODE=${CODE:-$WORK/code/AusEFlux}
+source "$CODE/benchmark/gadi/pbs/_job_common.sh"
+source "$WORK/envs/activate_step3.sh"
+: "${FLUX:?}" "${MODELS:?}" "${DEST:?}"
+job_header
+mkdir -p "$DEST/$FLUX"
+for f in "$MODELS/$FLUX"/*.joblib; do ln -sfn "$f" "$DEST/$FLUX/"; done
+ls "$DEST/$FLUX" | wc -l
+set +e
+run_timed python "$CODE/benchmark/compile_models.py" --models-folder "$DEST/$FLUX" --parallel "$NCPUS"
+rc=$?
+ls "$DEST/$FLUX/compiled" | wc -l
+job_end $rc

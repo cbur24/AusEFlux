@@ -91,7 +91,15 @@ The E5 residual (R² 0.9995, 2 % RMSE) was entirely due to E5's inputs (`--modis
 
 ## 3. Running an annual update on NCI Gadi
 
-Read `benchmark/gadi/README.md` for the full workflow; this is the short form.
+**One command**: `benchmark/gadi/annual_update/run_year.sh YEAR` submits the whole
+year (step1 → step2 with stored climatologies → step3 for the four fluxes → merge →
+format and monthly post-check) as one PBS dependency chain into
+`/scratch/ub8/pl5189/auseflux/annual/YEAR/`; `check_inputs.sh YEAR` first says which
+raw files are still missing, `DRY_RUN=1` prints the qsub commands. The recipe is the
+V25 one (validated at float noise against the published 2025 products) and costs
+about 350–370 SU per year. Read `benchmark/gadi/annual_update/README.md` for the
+details and failure handling. Below is the manual, step-by-step form of the same
+workflow (`benchmark/gadi/README.md` has the full version).
 Constraints: compute on project `ea89` (`-q normal`, 2 SU per core-hour); never write
 under `/g/data/xc0` (over quota); work under `/scratch/ub8/<user>/auseflux` (100-day
 purge); durable copies under `/g/data/ub8/au/blobs/auseflux_refactor/`. Login nodes

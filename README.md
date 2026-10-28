@@ -42,7 +42,8 @@ listed by `uv run <script> --help`.
 
 > **Picking this up?** Read [`HANDOVER.md`](HANDOVER.md): state of the code, validation
 > evidence, how to run an annual update on NCI Gadi, efficiency against the reference,
-> and the next steps.
+> and the next steps. To produce the next year's product on Gadi run
+> `benchmark/gadi/annual_update/run_year.sh YEAR` (see its README).
 
 ### Paths
 

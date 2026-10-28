@@ -1,0 +1,24 @@
+#!/bin/bash
+#PBS -P ea89
+#PBS -q normal
+#PBS -l ncpus=8,mem=32GB,walltime=06:00:00
+#PBS -l storage=gdata/xc0+gdata/ub8+scratch/ub8
+#PBS -j oe
+# step2 for an annual update: one stage (and optional variable subset) on the
+# hybrid interim, output year(s) only.  Submitted by run_year.sh:
+#   qsub -v WORK=..,CODE=..,INTERIM=..,OUTDIR=..,YEARS=2026-2026,STAGE=gapfill,VARS=NDWI:kNDVI step2_year.pbs
+# EXTRA (space separated) is appended, e.g. EXTRA="--no_reuse_clim".
+WORK=${WORK:-/scratch/ub8/pl5189/auseflux}
+CODE=${CODE:-$WORK/code/AusEFlux}
+source "$CODE/benchmark/gadi/pbs/_job_common.sh"
+source "$WORK/envs/activate_step12.sh"
+: "${INTERIM:?}" "${OUTDIR:?}" "${YEARS:?}" "${STAGE:?}"
+job_header
+md5sum "$CODE/step2_feature_datasets.py"
+args=(--interim_path "$INTERIM" --results_path "$OUTDIR" --static_path "${AUSEFLUX_STATIC}"
+      --years_out "$YEARS" --threads "$NCPUS" --stages "$(commas "$STAGE")" --verbose)
+[[ -n "${VARS:-}" ]] && args+=(--vars "$(commas "$VARS")")
+mkdir -p "$OUTDIR"
+set +e
+run_timed python "$CODE/step2_feature_datasets.py" "${args[@]}" "${EXTRA_ARGS[@]}"
+job_end $?

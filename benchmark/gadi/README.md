@@ -139,6 +139,11 @@ REFMASK=LAI_anom,VegH,NDWI,rain_anom,Tavg             # reference no-data mask
 
 ## Production workflow (one annual update)
 
+The scripted form of this section is `annual_update/run_year.sh YEAR` (see
+`annual_update/README.md`): input check, hybrid interim, step1, step2 with the
+stored climatologies, step3 for all fluxes, merges and a post-check, chained with
+PBS dependencies. The manual steps below are what it runs.
+
 ### step1: one year, sharded by variable group (≈ 13 SU)
 
 ```bash
