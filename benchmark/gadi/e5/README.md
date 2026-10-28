@@ -10,6 +10,7 @@ hard-wired to `/scratch/ub8/pl5189/auseflux` and project `ea89`; edit before reu
 - `e5_compile.pbs`: tl2cgen compilation of the NEE members.
 - `step3_cont.args`: argument file for the continental step3 jobs (used with
   `../pbs/submit_step3_year.sh`).
+- `th_nee.json`: NEE thresholds (`monthly_rel_denominator: mean_abs`, since NEE monthly means pass near zero).
 - `cmp.sh`, `e5_crop_cmp.pbs`, `crop.py`: scorecards with `../compare_products.py`
   (continental and window crops of the continental product).
 - `e5_parity.pbs`, `e5_parity.py`, `par_summary.py`: per-feature parity on the windows
