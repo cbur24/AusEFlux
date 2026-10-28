@@ -19,8 +19,8 @@ AusEFlux_quantile/{flux}); each is overridable on the command line.
 Predict-mode switches: --mask_vars, --mask_test, --valid_only/--all_pixels,
 --threads, --months/--merge/--merge_partial, --lat_rows START:END (same
 part-file / _r{START}-{END} window naming, feature-window detection, input
-validation, configuration attributes (mask_vars, mask_test, valid_only,
-lat_rows) and non-zero exit when an output was not produced as
+validation, configuration attributes (auseflux_mask_vars, auseflux_mask_test,
+auseflux_valid_only; windowed outputs add auseflux_lat_rows) and non-zero exit when an output was not produced as
 step3_ensemble_prediction.py).  The no-data
 defaults follow the reference ensemble (and step3_ensemble_prediction.py):
 mask vars LAI_anom,VegH,NDWI,rain_anom,Tavg, NaN-only test (`isnull()`;
@@ -224,18 +224,19 @@ LAT_ROWS_ATTR = 'auseflux_lat_rows'
 # when it is skipped.
 # (quantile_method / n_models of the ensemble script do not apply here: the
 # bands come from 3 quantile-regression models, see the 'method' attribute.)
-CONFIG_ATTRS = ('mask_vars', 'mask_test', 'valid_only', 'lat_rows')
+CONFIG_ATTRS = ('auseflux_mask_vars', 'auseflux_mask_test',
+                'auseflux_valid_only')
 
 
-def _config_attrs(mask_vars, mask_test, valid_only, lat_rows):
-    """Run-configuration attributes (see CONFIG_ATTRS).  *mask_vars* are the
-    effective mask variables and *lat_rows* the full-grid latitude window
-    ('all' = full grid)."""
+def _config_attrs(mask_vars, mask_test, valid_only):
+    """Run-configuration attributes (see CONFIG_ATTRS; `auseflux_` prefix so
+    they sit beside the published v2.1 attributes).  *mask_vars* are the
+    effective mask variables.  The latitude window is a separate attribute
+    (LAT_ROWS_ATTR, windowed outputs only) and part of the file name."""
     return {
-        'mask_vars': ','.join(mask_vars),
-        'mask_test': mask_test,
-        'valid_only': int(bool(valid_only)),
-        'lat_rows': _rows_attr(lat_rows) or 'all',
+        'auseflux_mask_vars': ','.join(mask_vars),
+        'auseflux_mask_test': mask_test,
+        'auseflux_valid_only': int(bool(valid_only)),
     }
 
 
@@ -452,7 +453,7 @@ SPATIAL_REF_ATTRS = {
     'spatial_ref': 'GEOGCRS["WGS 84",ENSEMBLE["World Geodetic System 1984 ensemble",MEMBER["World Geodetic System 1984 (Transit)"],MEMBER["World Geodetic System 1984 (G730)"],MEMBER["World Geodetic System 1984 (G873)"],MEMBER["World Geodetic System 1984 (G1150)"],MEMBER["World Geodetic System 1984 (G1674)"],MEMBER["World Geodetic System 1984 (G1762)"],MEMBER["World Geodetic System 1984 (G2139)"],MEMBER["World Geodetic System 1984 (G2296)"],ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]],ENSEMBLEACCURACY[2.0]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],USAGE[SCOPE["Horizontal component of 3D system."],AREA["World."],BBOX[-90,-180,90,180]],ID["EPSG",4326]]',
     'crs_wkt': 'GEOGCRS["WGS 84",ENSEMBLE["World Geodetic System 1984 ensemble",MEMBER["World Geodetic System 1984 (Transit)"],MEMBER["World Geodetic System 1984 (G730)"],MEMBER["World Geodetic System 1984 (G873)"],MEMBER["World Geodetic System 1984 (G1150)"],MEMBER["World Geodetic System 1984 (G1674)"],MEMBER["World Geodetic System 1984 (G1762)"],MEMBER["World Geodetic System 1984 (G2139)"],MEMBER["World Geodetic System 1984 (G2296)"],ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]],ENSEMBLEACCURACY[2.0]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],USAGE[SCOPE["Horizontal component of 3D system."],AREA["World."],BBOX[-90,-180,90,180]],ID["EPSG",4326]]',
     'semi_major_axis': 6378137.0,
-    'semi_minor_axis': 6356752.31424518,
+    'semi_minor_axis': 6356752.314245179,
     'inverse_flattening': 298.257223563,
     'reference_ellipsoid_name': 'WGS 84',
     'longitude_of_prime_meridian': 0.0,
@@ -845,7 +846,7 @@ def _predict_flux_quantile(flux, year, models_folder, features_path,
         feat_slice = lat_rows
     if config is None:
         config = _config_attrs([v for v in mask_vars if v in train_vars],
-                               mask_test, valid_only, lat_rows)
+                               mask_test, valid_only)
     # 'nan': only NaN marks no-data (reference `isnull()`; +-Inf pixels are
     # predicted with Inf -> 0); 'nonfinite': NaN or +-Inf marks no-data.
     _bad = np.isnan if mask_test == 'nan' else (lambda a: ~np.isfinite(a))
@@ -1167,7 +1168,7 @@ def run_quantile_pipeline(year, mode='predict', training_data_path=None,
 
     # Urban/water mask for the same full-grid rows (coordinates checked)
     urban_mask = _load_urban_mask(static_path, out_rows, lat, lon)
-    config = _config_attrs(eff_mask, mask_test, valid_only, out_rows)
+    config = _config_attrs(eff_mask, mask_test, valid_only)
 
     # Process each flux
     failures = []

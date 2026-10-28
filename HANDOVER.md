@@ -13,14 +13,17 @@ The four flat scripts on this branch (`step1_harmonisation.py`,
 `step2_feature_datasets.py`, `step3_ensemble_prediction.py`,
 `step3_ensemble_prediction_quantile.py`) replace the notebook-driven reference
 pipeline in `master:src/` (Chad Burton's `cbur24/AusEFlux`). Run end to end from
-raw inputs on Gadi, they reproduce the published v2.1 GPP and NEE products for
-2025 across the whole continent within tolerance (R² ≥ 0.9995, RMSE ≤ 2.2 % of the
-reference std, 98 % of pixel-months bit-equal, annual sums within 0.05 %). Fed the
-reference's own features, step3 reproduces the published product bit-for-bit. The
-defaults of every script now follow the reference semantics; every earlier
-deviation is still available as a flag. A GPP + NEE annual update costs about
-285 SU against roughly 3,100 SU for the reference's prediction stage alone. Nothing
-remains queued on Gadi; the whole programme used 1.14 KSU of project `ea89`.
+raw inputs on Gadi with the final defaults, they reproduce the published v2.1
+GPP, NEE, ER and ET products for 2025 across the whole continent at float noise
+(V25: R² ≥ 0.99999, RMSE 0.1–0.3 % of the reference std, 98.4–99.2 % of
+pixel-months bit-equal, annual sums within 1e-5), in files with the published
+layout (`check_format.py` PASS). Fed the reference's own features, step3
+reproduces the published product bit-for-bit. The defaults of every script now
+follow the reference semantics; every earlier deviation is still available as a
+flag. A four-flux annual update costs about 455 SU (GPP + NEE ≈ 300 SU) against
+roughly 3,100 SU for the reference's prediction stage alone for two fluxes.
+Nothing remains queued on Gadi; the whole programme used 1.63 KSU of project
+`ea89` (V25 491 SU).
 
 ## 2. State of the code
 
@@ -82,8 +85,9 @@ it is cheaper **and** within tolerance.
 | E5 end to end, continental 2025 GPP + NEE | PASS all bands; 2024 windows PASS with `poison` |
 | E6 efficiency | every optimisation bit-identical; thread knee 4–12 |
 | E7 distilled fast path (L2 loss) | GPP R² 0.996 / NEE 0.986, annual sums within 0.02 %, per-pixel RMSE 6–12 % of std (fails the 5 % check); 21 SU/flux-yr |
+| V25 end to end with the final defaults, continental 2025, **all four fluxes**, published file layout | PASS all bands: R² 0.99999–0.999999, RMSE 0.1–0.3 % of std, 98.4–99.2 % bit-equal, annual sums ≤ 1e-5, worst MVG 0.09 %; `check_format.py` PASS; 491 SU |
 
-ER and ET were verified through E1 (exact recombination) only, not end to end.
+The E5 residual (R² 0.9995, 2 % RMSE) was entirely due to E5's inputs (`--modis_nodata exclude`); V25 vs E5 differs by the same amount as E5 vs published.
 
 ## 3. Running an annual update on NCI Gadi
 
@@ -132,9 +136,13 @@ or fall back to the reference env `$XC/env/py310`.
      --features_path $W/features_500m --static_path $XC/data \
      --variables_file $XC/results/variables.txt --output_path $W/results/AusEFlux
    ```
-   Defaults: 4 threads, 3 months per job, dependent merge. Three E5 jobs landed on nodes
-   2–3× slower than the rest and cost about 50 SU extra; `MONTHS_PER_JOB=1` limits that
-   exposure. Month parts are skip-if-exists, so rerunning a failed month is safe.
+   Defaults: 4 threads, 3 months per job, dependent merge. Use `MONTHS_PER_JOB=1` and
+   keep the default 4 h walltime: three E5 jobs and one V25 job landed on nodes 2–3×
+   slower than the rest (a 45-minute month took > 2 h 30 min and was killed at a 2 h 30 min
+   walltime). Month parts are skip-if-exists, so rerunning a failed month is safe; the
+   merge job is deleted with the failed month (`afterok`), so resubmit the month with
+   `step3_month.pbs` and the same args file, then `merge.pbs` (see
+   `/scratch/ub8/pl5189/auseflux/v25/RUNLOG.md`).
 4. **Score** against the previous product or the reference:
    `qsub -v AUSEF_ENV=step12,... $P/compare.pbs` running
    `benchmark/gadi/compare_products.py NEW REF --flux GPP --mvg --plots`
@@ -146,8 +154,9 @@ or fall back to the reference env `$XC/env/py310`.
 |---|---|---|---|
 | step1 per year | ≈ 3.5 h on a dask cluster | 21 min wall, 13 SU, RSS < 4 GB | rasterio warps with `num_threads`, chunked writes, MODIS band read once, VegH warped once |
 | step2 | ≈ 6.5 h for full 2003–2025 stacks (1.7 TB written) | 2.5 h, 114 SU, 45 GB written (`--years_out`) | annual-update mode writes only the new year; tile-chunked interim reads (68 s → 0.55 s per tile); stored climatologies |
-| step3 per flux-year | 30 jobs × 26 cpus × ≤ 1 h ≈ 1,560 SU, plus ~1 h combine | 72 (GPP) / 86 (NEE) SU, 10 GB peak | fused predict + combine, valid-pixel-only prediction (−52 % rows), tl2cgen-compiled LightGBM (1.85×), nearest-rank sort-and-take quantiles, 4-thread jobs at the scaling knee |
-| GPP + NEE annual update | ≈ 3,100 SU + step1/step2 | ≈ 285 SU (≈ 190 with stored climatologies) | |
+| step3 per flux-year | 30 jobs × 26 cpus × ≤ 1 h ≈ 1,560 SU, plus ~1 h combine | 77 (GPP) / 90 (NEE) / 72 (ER) / 73 (ET) SU (V25, 1 month per job), 12 GB peak | fused predict + combine, valid-pixel-only prediction (−52 % rows), tl2cgen-compiled LightGBM (1.85×), nearest-rank sort-and-take quantiles, 4-thread jobs at the scaling knee |
+| GPP + NEE annual update | ≈ 3,100 SU + step1/step2 | ≈ 300 SU (≈ 200 with stored climatologies) | |
+| Four-flux annual update | ≈ 6,200 SU + step1/step2 | ≈ 455 SU measured (V25; ≈ 350 with stored climatologies) | |
 
 Every speed-up above is bit-identical to the unoptimised path (E6). Not adopted:
 ONNX / Hummingbird RF (inexact or wrong), GTIL (4–9× slower), member subsampling
@@ -156,10 +165,13 @@ ONNX / Hummingbird RF (inexact or wrong), GTIL (4–9× slower), member subsampl
 ## 5. Next steps (in priority order)
 
 1. **Make the step3 submitter resilient to slow nodes**: default `MONTHS_PER_JOB=1`
-   or add a per-job walltime watchdog that resubmits; E5 lost ≈ 50 SU this way.
-2. **ER and ET end to end**: run step3 for ER and ET on the E5 2025 feature set
-   (`/scratch/ub8/pl5189/auseflux/features_500m_e5`, until purged) and score them;
-   ≈ 160 SU. Their member recombination is already exact (E1).
+   and resubmit a month automatically when it is killed at walltime (keep the merge
+   alive with `afterany` + a completeness check); E5 lost ≈ 50 SU and V25 20 SU this way.
+2. **Align the intermediate file layout with the reference** if the interim or feature
+   stacks are ever consumed by other tools: the products match the published layout
+   (V25), but step1/step2 outputs still use an epoch-based time axis, no `spatial_ref`
+   variable, `units` instead of `_FillValue` on lat/lon, and chunked + deflated storage
+   (headers in `v25/cmp/layout/`). The pipeline itself does not care.
 3. **Stored-climatology annual update**: run step2 2025 with `--reuse_clim` against the
    E5 climatologies and confirm the 15–25 SU estimate and bit-identity with E5.
 4. **2024 full-year acceptance** if a complete scorecard for both years is wanted
@@ -182,7 +194,8 @@ ONNX / Hummingbird RF (inexact or wrong), GTIL (4–9× slower), member subsampl
 | E5 products (2025 GPP/NEE), window products, scorecards, logs, scripts | `/scratch/ub8/pl5189/auseflux/results/e5/` and durable copy `/g/data/ub8/au/blobs/auseflux_refactor/e5/` |
 | Other experiment outputs (E0–E7) | `/scratch/ub8/pl5189/auseflux/results/{e0,e1,e2a,e2b,e3w,e4,e6w,e7}/` (100-day purge; `e2a` member dumps ≈ 100 GB can be deleted) |
 | New interim 2024/2025, E5 features | `/scratch/ub8/pl5189/auseflux/interim_500m/`, `/scratch/ub8/pl5189/auseflux/features_500m_e5/` |
-| Compiled models | `/scratch/ub8/pl5189/auseflux/results/models_compiled/{GPP,NEE}/` |
+| Compiled models | `/scratch/ub8/pl5189/auseflux/results/models_compiled/{GPP,NEE,ER,ET}/` |
+| V25 full 2025 reproduction (four fluxes): hybrid interim, features, products, scorecards, format checks, logs, `RUNLOG.md` | `/scratch/ub8/pl5189/auseflux/v25/` and durable copy `/g/data/ub8/au/blobs/auseflux_refactor/v25/` |
 | Reference code, models, products, interim, features | `/g/data/xc0/project/AusEFlux/` (read only); published products `/g/data/ub8/au/AusEFlux/v2.1/monthly/` |
 | Raw inputs | `/g/data/ub8/au/{MODIS/mosaic/MCD43A4.006,MODIS/mosaic/MYD11A1.006,OzWALD/8day,OzWALD/daily/meteo,SILO}` |
 | Original review plan | `~/.claude/plans/review-the-code-in-glistening-salamander.md` on the workstation |

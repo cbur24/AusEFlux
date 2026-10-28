@@ -190,14 +190,16 @@ NCI Gadi against the published v2.1 products for 2024 and 2025
   0.004 °C / 0.002 m because of the reference's GeoBox affine.
 - **Features.** step2 on the reference interim reproduces 16 of 28 features
   bit-identically, the rest at float32 rounding (E3, 3 latitude windows, 2024 and 2025).
-- **End to end** (new step1 + step2 + step3 from raw inputs, continental 2025, GPP and
-  NEE): every band passes the scorecard against the published v2.1 product (E5). R² ≥
-  0.9995, RMSE ≤ 2.2 % of the reference std, 98.2–98.7 % of pixel-months bit-equal,
-  continental annual sums within 0.05 %, every major vegetation group within 0.4 %. The
-  2024 latitude windows pass too once `--modis_nodata poison` (now the default) is used;
-  with `exclude` the tropical north fails on the wet-season months. Full-year cost for
-  GPP + NEE ≈ 285 SU (step1 13, step2 114, step3 72 + 86) against ≈ 3,100 SU for the
-  reference's step3 alone. See `benchmark/GADI_REPORT.md`.
+- **End to end** (new step1 + step2 + step3 from raw inputs with the final defaults,
+  continental 2025, **GPP, NEE, ER and ET**): every band passes the scorecard against
+  the published v2.1 products (V25). R² ≥ 0.99999, RMSE 0.1–0.3 % of the reference std,
+  98.4–99.2 % of pixel-months bit-equal, continental annual sums within 1e-5, every
+  major vegetation group within 0.1 %, and the files match the published layout
+  (`benchmark/gadi/check_format.py` PASS). The earlier E5 run (R² 0.9995, RMSE 2 %)
+  differed only through `--modis_nodata exclude`; the 2024 latitude windows pass with
+  `poison` (now the default) and fail in the tropical north with `exclude`. Full-year
+  cost ≈ 455 SU for four fluxes (step1 12, step2 129, step3 72–90 per flux) against
+  ≈ 1,560 SU per flux for the reference's step3 alone. See `benchmark/GADI_REPORT.md`.
 
 The earlier bbox and continental results (`benchmark/REPORT.md`, `benchmark/BENCHMARKING.md`)
 were obtained with the previous defaults (linear quantiles, mask without `LAI_anom`).

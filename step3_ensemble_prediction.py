@@ -57,7 +57,8 @@ Safety: every feature must have the same time axis, latitude window and
 coordinates as the first one, and the urban/water mask must match the
 feature grid (1e-4 deg), else the run stops with an error.  Products, parts
 and member dumps carry the run configuration as global attributes
-(quantile_method, mask_vars, mask_test, n_models, valid_only, lat_rows);
+(auseflux_quantile_method, auseflux_mask_vars, auseflux_mask_test,
+auseflux_n_models, auseflux_valid_only; windowed outputs add auseflux_lat_rows);
 parts with different configurations are not merged, and an existing output
 with a different configuration is skipped with a WARNING.  The exit status
 is non-zero if any requested output was not produced (existing outputs
@@ -251,22 +252,24 @@ LAT_ROWS_ATTR = 'auseflux_lat_rows'
 # member dumps.  Month parts must agree on all of them to be merged, and an
 # existing output whose values differ from the request is reported (WARNING)
 # when it is skipped.
-CONFIG_ATTRS = ('quantile_method', 'mask_vars', 'mask_test', 'n_models',
-                'valid_only', 'lat_rows')
+CONFIG_ATTRS = ('auseflux_quantile_method', 'auseflux_mask_vars',
+                'auseflux_mask_test', 'auseflux_n_models',
+                'auseflux_valid_only')
 
 
 def _config_attrs(quantile_method, mask_vars, mask_test, n_models,
-                  valid_only, lat_rows):
-    """Run-configuration attributes (see CONFIG_ATTRS).  *mask_vars* are the
-    effective mask variables, *n_models* the number of members used and
-    *lat_rows* the full-grid latitude window ('all' = full grid)."""
+                  valid_only):
+    """Run-configuration attributes (see CONFIG_ATTRS; `auseflux_` prefix so
+    they sit beside the published v2.1 attributes).  *mask_vars* are the
+    effective mask variables and *n_models* the number of members used.  The
+    latitude window is a separate attribute (LAT_ROWS_ATTR, windowed outputs
+    only) and part of the file name."""
     return {
-        'quantile_method': quantile_method,
-        'mask_vars': ','.join(mask_vars),
-        'mask_test': mask_test,
-        'n_models': int(n_models),
-        'valid_only': int(bool(valid_only)),
-        'lat_rows': _rows_attr(lat_rows) or 'all',
+        'auseflux_quantile_method': quantile_method,
+        'auseflux_mask_vars': ','.join(mask_vars),
+        'auseflux_mask_test': mask_test,
+        'auseflux_n_models': int(n_models),
+        'auseflux_valid_only': int(bool(valid_only)),
     }
 
 
@@ -522,7 +525,7 @@ SPATIAL_REF_ATTRS = {
     'spatial_ref': 'GEOGCRS["WGS 84",ENSEMBLE["World Geodetic System 1984 ensemble",MEMBER["World Geodetic System 1984 (Transit)"],MEMBER["World Geodetic System 1984 (G730)"],MEMBER["World Geodetic System 1984 (G873)"],MEMBER["World Geodetic System 1984 (G1150)"],MEMBER["World Geodetic System 1984 (G1674)"],MEMBER["World Geodetic System 1984 (G1762)"],MEMBER["World Geodetic System 1984 (G2139)"],MEMBER["World Geodetic System 1984 (G2296)"],ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]],ENSEMBLEACCURACY[2.0]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],USAGE[SCOPE["Horizontal component of 3D system."],AREA["World."],BBOX[-90,-180,90,180]],ID["EPSG",4326]]',
     'crs_wkt': 'GEOGCRS["WGS 84",ENSEMBLE["World Geodetic System 1984 ensemble",MEMBER["World Geodetic System 1984 (Transit)"],MEMBER["World Geodetic System 1984 (G730)"],MEMBER["World Geodetic System 1984 (G873)"],MEMBER["World Geodetic System 1984 (G1150)"],MEMBER["World Geodetic System 1984 (G1674)"],MEMBER["World Geodetic System 1984 (G1762)"],MEMBER["World Geodetic System 1984 (G2139)"],MEMBER["World Geodetic System 1984 (G2296)"],ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]],ENSEMBLEACCURACY[2.0]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],USAGE[SCOPE["Horizontal component of 3D system."],AREA["World."],BBOX[-90,-180,90,180]],ID["EPSG",4326]]',
     'semi_major_axis': 6378137.0,
-    'semi_minor_axis': 6356752.31424518,
+    'semi_minor_axis': 6356752.314245179,
     'inverse_flattening': 298.257223563,
     'reference_ellipsoid_name': 'WGS 84',
     'longitude_of_prime_meridian': 0.0,
@@ -916,7 +919,7 @@ def _predict_groups(flux, year, models_folder, train_vars, output_path,
         config = _config_attrs(quantile_method,
                                [v for v in mask_vars if v in train_vars],
                                'nan' if _bad is np.isnan else 'nonfinite',
-                               n_members, valid_only, lat_rows)
+                               n_members, valid_only)
 
     var_names = [f'{flux}_25th_percentile',
                  f'{flux}_median',
@@ -1220,7 +1223,7 @@ def run_ensemble_pipeline(year, features_path=None, static_path=None,
         member_names = [f[:-len('.joblib')]
                         for f in _member_files(models_folder, n_models)]
         config = _config_attrs(quantile_method, eff_mask, mask_test,
-                               len(member_names), valid_only, out_rows)
+                               len(member_names), valid_only)
 
         # Check if final output already exists
         final_file = os.path.join(flux_out,
@@ -1391,12 +1394,12 @@ def _selftest():
     assert _product_name('GPP', 2024, (10, 25)).endswith('_v2.1_r10-25.nc')
     assert _part_name('GPP', 2024, 3, (10, 25)).endswith('_m03_r10-25.nc')
     assert _product_name('GPP', 2024) == _product_name('GPP', 2024, None)
-    cfg = _config_attrs('nearest', ['VegH', 'NDWI'], 'nan', 30, True, None)
+    cfg = _config_attrs('nearest', ['VegH', 'NDWI'], 'nan', 30, True)
     assert _config_diff({k: str(v) for k, v in cfg.items()}, cfg) == []
-    assert _config_diff({**cfg, 'valid_only': 0}, cfg) == \
-        ['valid_only: file=0 requested=1']
+    assert _config_diff({**cfg, 'auseflux_valid_only': 0}, cfg) == \
+        ['auseflux_valid_only: file=0 requested=1']
     assert _config_diff({}, cfg)[0] == \
-        'quantile_method: file=(absent) requested=nearest'
+        'auseflux_quantile_method: file=(absent) requested=nearest'
     assert TILE_ROWS % 200 == 0
     for bad in ('0', '13', '', '5-14', 'x'):
         try:
